@@ -49,26 +49,61 @@ app.get('/movies', async (req, res) => {
   }
 });
 
-// Route: Signup (SINGLE VERSION - FIXED)
+// Route: Signup with enhanced validation
 app.post('/signup', async (req, res) => {
   const { name, username, email, password } = req.body;
 
+  // Server-side validation
   if (!name || !username || !email || !password) {
     return res.status(400).json({ error: 'Please fill all required fields.' });
+  }
+
+  // Email format validation
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+
+  // Username validation
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+  if (!usernameRegex.test(username)) {
+    return res.status(400).json({ error: 'Username must be 3-20 characters long and contain only letters, numbers, and underscores.' });
+  }
+
+  // Password validation
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+  }
+
+  // Name validation
+  const nameRegex = /^[a-zA-Z\s]{2,50}$/;
+  if (!nameRegex.test(name)) {
+    return res.status(400).json({ error: 'Name must contain only letters and spaces (2-50 characters).' });
   }
 
   const session = driver.session();
 
   try {
+    // Check if user already exists (case-insensitive)
     const checkUserQuery = `
       MATCH (u:User)
-      WHERE u.username = $username OR u.email = $email
-      RETURN u LIMIT 1
+      WHERE toLower(u.username) = toLower($username) OR toLower(u.email) = toLower($email)
+      RETURN u.username as existingUsername, u.email as existingEmail
+      LIMIT 1
     `;
     const result = await session.run(checkUserQuery, { username, email });
 
     if (result.records.length > 0) {
-      return res.status(400).json({ error: 'User with that username or email already exists.' });
+      const existing = result.records[0];
+      const existingUsername = existing.get('existingUsername');
+      const existingEmail = existing.get('existingEmail');
+      
+      if (existingUsername.toLowerCase() === username.toLowerCase()) {
+        return res.status(400).json({ error: 'Username already exists. Please choose a different username.' });
+      }
+      if (existingEmail.toLowerCase() === email.toLowerCase()) {
+        return res.status(400).json({ error: 'Email already registered. Please use a different email or try logging in.' });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -79,43 +114,50 @@ app.post('/signup', async (req, res) => {
         username: $username,
         email: $email,
         password: $password,
-        profilePicture: $defaultPfp
+        profilePicture: $defaultPfp,
+        createdAt: datetime(),
+        isActive: true
       })
       RETURN u
     `;
 
     await session.run(createUserQuery, {
-      name,
-      username,
-      email,
+      name: name.trim(),
+      username: username.toLowerCase(), // Store username in lowercase for consistency
+      email: email.toLowerCase(), // Store email in lowercase for consistency
       password: hashedPassword,
-      defaultPfp: 'pp.jpg' // Set default profile picture for new users
+      defaultPfp: 'pp.jpg'
     });
 
-    console.log(`New user ${username} created with default profile picture`);
+    console.log(`New user ${username} created successfully with email ${email}`);
 
-    res.status(201).json({ message: 'User created successfully!' });
+    res.status(201).json({ 
+      message: 'Account created successfully! You can now log in.',
+      username: username.toLowerCase()
+    });
+
   } catch (error) {
     console.error('Signup error:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: 'Internal server error. Please try again later.' });
   } finally {
     await session.close();
   }
 });
 
-// Route: Login (FIXED)
+// Route: Login with case-insensitive username
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const session = driver.session();
 
   try {
+    // Search for user (case-insensitive)
     const result = await session.run(
-      'MATCH (u:User {username: $username}) RETURN u.name AS name, u.password AS password, u.profilePicture AS profilePicture',
+      'MATCH (u:User) WHERE toLower(u.username) = toLower($username) RETURN u.name AS name, u.password AS password, u.profilePicture AS profilePicture, u.username AS actualUsername',
       { username }
     );
 
     if (result.records.length === 0) {
-      return res.status(401).json({ message: 'User does not exist' });
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
 
     const storedPassword = result.records[0].get('password');
@@ -123,18 +165,19 @@ app.post('/login', async (req, res) => {
 
     if (isMatch) {
       const userName = result.records[0].get('name');
-      // Get profile picture path, default to 'pp.jpg' if none exists
+      const actualUsername = result.records[0].get('actualUsername');
       const profilePicture = result.records[0].get('profilePicture') || 'pp.jpg';
       
-      console.log(`User ${username} logged in with profile picture: ${profilePicture}`);
+      console.log(`User ${actualUsername} logged in successfully`);
       
       res.json({ 
         message: 'Login successful', 
         name: userName,
+        username: actualUsername, // Return the actual username from database
         profilePicture: profilePicture
       });
     } else {
-      res.status(401).json({ message: 'Incorrect password' });
+      res.status(401).json({ message: 'Invalid username or password' });
     }
 
   } catch (err) {
@@ -145,7 +188,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Route: Upload profile picture (FIXED)
+// Route: Upload profile picture
 app.post("/upload-pfp", upload.single("pfp"), async (req, res) => {
   const username = req.body.username;
 
@@ -241,11 +284,6 @@ app.post('/delete-account', async (req, res) => {
   }
 });
 
-// Serve moviePage.html
-app.get('/moviePage', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'moviePage.html'));
-});
-
 // Get genres
 app.get('/genres', async (req, res) => {
   const session = driver.session();
@@ -267,8 +305,6 @@ app.get('/genres', async (req, res) => {
     await session.close();
   }
 });
-
-// FIXED SERVER ROUTES - Replace your like/dislike routes with these:
 
 // FIXED Like a movie - Removes dislike if exists, then creates like
 app.post('/like', async (req, res) => {
@@ -366,7 +402,7 @@ app.post('/dislike', async (req, res) => {
   }
 });
 
-// Add route to check movie status for a user
+// Check movie status for a user (liked/disliked/neutral)
 app.get('/movie-status/:username/:movieName', async (req, res) => {
   const { username, movieName } = req.params;
   const session = driver.session();
@@ -399,62 +435,81 @@ app.get('/movie-status/:username/:movieName', async (req, res) => {
   }
 });
 
-// FIXED Enhanced recommendations based on movie properties
+// Get smart recommendations based on user's likes and genre relationships
 app.get('/recommendations/:username', async (req, res) => {
   const { username } = req.params;
   const session = driver.session();
 
   try {
-    console.log(`Getting recommendations for user: ${username}`); // Debug log
+    console.log(`Getting smart recommendations for user: ${username}`);
 
-    // Get content-based recommendations
+    // Multi-layered recommendation query
     const result = await session.run(`
-      // Find movies liked by the user
+      // Get user's liked movies and their genres
       MATCH (u:User {username: $username})-[:LIKES]->(liked:Movie)
       
-      // Find similar movies based on genre, director, company, star
-      MATCH (similar:Movie)
-      WHERE similar <> liked
-      AND (
-        similar.genre = liked.genre OR
-        similar.director = liked.director OR
-        similar.company = liked.company OR
-        similar.star = liked.star
-      )
-      // Exclude movies already liked or disliked
-      AND NOT EXISTS((u)-[:LIKES]->(similar))
-      AND NOT EXISTS((u)-[:DISLIKES]->(similar))
+      // Collect user's preferred genres with weights
+      WITH u, 
+           COLLECT(DISTINCT liked.genre) as preferred_genres,
+           COLLECT(DISTINCT liked.director) as preferred_directors,
+           COLLECT(DISTINCT liked.company) as preferred_companies,
+           COLLECT(DISTINCT liked.star) as preferred_stars,
+           COUNT(liked) as total_likes
       
-      // Score based on number of matching criteria
-      WITH similar, 
-           COUNT(DISTINCT CASE WHEN similar.genre = liked.genre THEN 1 END) as genre_matches,
-           COUNT(DISTINCT CASE WHEN similar.director = liked.director THEN 1 END) as director_matches,
-           COUNT(DISTINCT CASE WHEN similar.company = liked.company THEN 1 END) as company_matches,
-           COUNT(DISTINCT CASE WHEN similar.star = liked.star THEN 1 END) as star_matches,
-           COUNT(DISTINCT liked) as total_liked_movies
+      // Find movies that match user preferences
+      MATCH (candidate:Movie)
+      WHERE NOT EXISTS((u)-[:LIKES]->(candidate))
+      AND NOT EXISTS((u)-[:DISLIKES]->(candidate))
       
-      WITH similar, 
-           (genre_matches + director_matches + company_matches + star_matches) as similarity_score,
-           similar.score as movie_score
+      // Calculate recommendation score based on multiple factors
+      WITH candidate, preferred_genres, preferred_directors, preferred_companies, preferred_stars, total_likes,
+           // Genre score (highest weight)
+           CASE WHEN candidate.genre IN preferred_genres THEN 10 ELSE 0 END as genre_score,
+           // Director score
+           CASE WHEN candidate.director IN preferred_directors THEN 5 ELSE 0 END as director_score,
+           // Company score
+           CASE WHEN candidate.company IN preferred_companies THEN 3 ELSE 0 END as company_score,
+           // Star score
+           CASE WHEN candidate.star IN preferred_stars THEN 4 ELSE 0 END as star_score,
+           // Movie quality score (normalize to 0-3 range)
+           CASE WHEN candidate.score IS NOT NULL THEN (candidate.score / 10.0) * 3 ELSE 0 END as quality_score,
+           // Recency bonus (movies from last 10 years get small boost)
+           CASE WHEN candidate.year >= (date().year - 10) THEN 1 ELSE 0 END as recency_bonus
       
-      WHERE similarity_score > 0
+      // Calculate total recommendation score
+      WITH candidate, 
+           (genre_score + director_score + company_score + star_score + quality_score + recency_bonus) as recommendation_score,
+           genre_score, director_score, company_score, star_score, quality_score
       
-      RETURN similar, similarity_score, movie_score
-      ORDER BY similarity_score DESC, movie_score DESC
-      LIMIT 20
+      // Only return movies with some relevance (score > 0)
+      WHERE recommendation_score > 0
+      
+      RETURN candidate, recommendation_score, genre_score, director_score, company_score, star_score, quality_score
+      ORDER BY recommendation_score DESC, candidate.score DESC
+      LIMIT 25
     `, { username });
 
-    const movies = result.records.map(record => {
-      const movie = record.get('similar').properties;
-      const score = record.get('similarity_score').low || record.get('similarity_score');
-      console.log(`Recommended: ${movie.name} (score: ${score})`); // Debug log
-      return movie;
+    const recommendations = result.records.map(record => {
+      const movie = record.get('candidate').properties;
+      const score = record.get('recommendation_score');
+      const breakdown = {
+        genre: record.get('genre_score'),
+        director: record.get('director_score'),
+        company: record.get('company_score'),
+        star: record.get('star_score'),
+        quality: record.get('quality_score')
+      };
+      
+      console.log(`Recommended: ${movie.name} (total score: ${score}, breakdown:`, breakdown, ')');
+      return { movie, score, breakdown };
     });
 
-    console.log(`Found ${movies.length} recommendations for ${username}`); // Debug log
+    console.log(`Found ${recommendations.length} smart recommendations for ${username}`);
 
-    if (movies.length === 0) {
-      // If no recommendations found, try a simpler approach - popular movies not yet rated
+    if (recommendations.length === 0) {
+      // Fallback: get popular movies not yet rated
+      console.log('No personalized recommendations found, using popular movies fallback');
+      
       const fallbackResult = await session.run(`
         MATCH (u:User {username: $username})
         MATCH (m:Movie)
@@ -463,15 +518,28 @@ app.get('/recommendations/:username', async (req, res) => {
         AND m.score IS NOT NULL
         RETURN m
         ORDER BY m.score DESC
-        LIMIT 10
+        LIMIT 15
       `, { username });
 
-      const fallbackMovies = fallbackResult.records.map(record => record.get('m').properties);
-      console.log(`Using fallback recommendations: ${fallbackMovies.length} movies`); // Debug log
+      const fallbackMovies = fallbackResult.records.map(record => ({
+        movie: record.get('m').properties,
+        score: 0,
+        breakdown: { fallback: true }
+      }));
       
-      res.json({ success: true, movies: fallbackMovies });
+      res.json({ 
+        success: true, 
+        movies: fallbackMovies.map(r => r.movie),
+        type: 'fallback',
+        message: 'Showing popular movies as you haven\'t liked enough movies yet'
+      });
     } else {
-      res.json({ success: true, movies });
+      res.json({ 
+        success: true, 
+        movies: recommendations.map(r => r.movie),
+        type: 'personalized',
+        message: `Showing ${recommendations.length} personalized recommendations`
+      });
     }
 
   } catch (error) {
@@ -482,45 +550,97 @@ app.get('/recommendations/:username', async (req, res) => {
   }
 });
 
-// Add route to get user's liked movies (for debugging)
-app.get('/user-likes/:username', async (req, res) => {
+// Get filtered movies for homepage (mix of recommendations and popular)
+app.get('/homepage-movies/:username', async (req, res) => {
   const { username } = req.params;
   const session = driver.session();
 
   try {
-    const result = await session.run(`
-      MATCH (u:User {username: $username})-[:LIKES]->(movie:Movie)
-      RETURN movie
-      ORDER BY movie.name
+    console.log(`Getting homepage movies for user: ${username}`);
+
+    // Get personalized recommendations
+    const recommendationsResult = await session.run(`
+      MATCH (u:User {username: $username})-[:LIKES]->(liked:Movie)
+      
+      WITH u, 
+           COLLECT(DISTINCT liked.genre) as preferred_genres,
+           COLLECT(DISTINCT liked.director) as preferred_directors,
+           COLLECT(DISTINCT liked.company) as preferred_companies,
+           COUNT(liked) as total_likes
+      
+      MATCH (candidate:Movie)
+      WHERE NOT EXISTS((u)-[:LIKES]->(candidate))
+      AND NOT EXISTS((u)-[:DISLIKES]->(candidate))
+      
+      WITH candidate, preferred_genres, preferred_directors, preferred_companies, total_likes,
+           CASE WHEN candidate.genre IN preferred_genres THEN 10 ELSE 0 END as genre_score,
+           CASE WHEN candidate.director IN preferred_directors THEN 5 ELSE 0 END as director_score,
+           CASE WHEN candidate.company IN preferred_companies THEN 3 ELSE 0 END as company_score,
+           CASE WHEN candidate.score IS NOT NULL THEN (candidate.score / 10.0) * 3 ELSE 0 END as quality_score
+      
+      WITH candidate, 
+           (genre_score + director_score + company_score + quality_score) as recommendation_score
+      
+      RETURN candidate, recommendation_score
+      ORDER BY recommendation_score DESC, candidate.score DESC
+      LIMIT 15
     `, { username });
 
-    const likedMovies = result.records.map(record => record.get('movie').properties);
-    res.json({ success: true, movies: likedMovies, count: likedMovies.length });
-  } catch (error) {
-    console.error('Error getting liked movies:', error);
-    res.status(500).json({ success: false, message: 'Failed to get liked movies' });
-  } finally {
-    await session.close();
-  }
-});
-
-// Add route to get user's disliked movies (for debugging)
-app.get('/user-dislikes/:username', async (req, res) => {
-  const { username } = req.params;
-  const session = driver.session();
-
-  try {
-    const result = await session.run(`
-      MATCH (u:User {username: $username})-[:DISLIKES]->(movie:Movie)
-      RETURN movie
-      ORDER BY movie.name
+    // Get popular movies not yet rated
+    const popularResult = await session.run(`
+      MATCH (u:User {username: $username})
+      MATCH (m:Movie)
+      WHERE NOT EXISTS((u)-[:LIKES]->(m))
+      AND NOT EXISTS((u)-[:DISLIKES]->(m))
+      AND m.score IS NOT NULL
+      RETURN m
+      ORDER BY m.score DESC
+      LIMIT 10
     `, { username });
 
-    const dislikedMovies = result.records.map(record => record.get('movie').properties);
-    res.json({ success: true, movies: dislikedMovies, count: dislikedMovies.length });
+    const recommendations = recommendationsResult.records.map(record => ({
+      ...record.get('candidate').properties,
+      _isRecommended: true,
+      _score: record.get('recommendation_score')
+    }));
+
+    const popular = popularResult.records.map(record => ({
+      ...record.get('m').properties,
+      _isPopular: true
+    }));
+
+    // Merge and sort by recommendation score, then by movie score
+    const allMovies = [...recommendations, ...popular]
+      .reduce((unique, movie) => {
+        // Remove duplicates based on movie name
+        if (!unique.find(m => m.name === movie.name)) {
+          unique.push(movie);
+        }
+        return unique;
+      }, [])
+      .sort((a, b) => {
+        // Sort by recommendation score first, then by movie score
+        const scoreA = a._score || 0;
+        const scoreB = b._score || 0;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        return (b.score || 0) - (a.score || 0);
+      });
+
+    console.log(`Homepage: ${recommendations.length} personalized + ${popular.length} popular = ${allMovies.length} total movies`);
+
+    res.json({ 
+      success: true, 
+      movies: allMovies,
+      stats: {
+        personalized: recommendations.length,
+        popular: popular.length,
+        total: allMovies.length
+      }
+    });
+
   } catch (error) {
-    console.error('Error getting disliked movies:', error);
-    res.status(500).json({ success: false, message: 'Failed to get disliked movies' });
+    console.error('Homepage movies error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get homepage movies' });
   } finally {
     await session.close();
   }
@@ -566,7 +686,51 @@ app.get('/user-stats/:username', async (req, res) => {
   }
 });
 
-// DEBUG ROUTES - Add these temporarily to test
+// Get user's liked movies (for debugging)
+app.get('/user-likes/:username', async (req, res) => {
+  const { username } = req.params;
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (u:User {username: $username})-[:LIKES]->(movie:Movie)
+      RETURN movie
+      ORDER BY movie.name
+    `, { username });
+
+    const likedMovies = result.records.map(record => record.get('movie').properties);
+    res.json({ success: true, movies: likedMovies, count: likedMovies.length });
+  } catch (error) {
+    console.error('Error getting liked movies:', error);
+    res.status(500).json({ success: false, message: 'Failed to get liked movies' });
+  } finally {
+    await session.close();
+  }
+});
+
+// Get user's disliked movies (for debugging)
+app.get('/user-dislikes/:username', async (req, res) => {
+  const { username } = req.params;
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (u:User {username: $username})-[:DISLIKES]->(movie:Movie)
+      RETURN movie
+      ORDER BY movie.name
+    `, { username });
+
+    const dislikedMovies = result.records.map(record => record.get('movie').properties);
+    res.json({ success: true, movies: dislikedMovies, count: dislikedMovies.length });
+  } catch (error) {
+    console.error('Error getting disliked movies:', error);
+    res.status(500).json({ success: false, message: 'Failed to get disliked movies' });
+  } finally {
+    await session.close();
+  }
+});
+
+// DEBUG ROUTES - Remove these in production
 app.get('/debug/user/:username', async (req, res) => {
   const { username } = req.params;
   const session = driver.session();
