@@ -13,7 +13,7 @@ function showLogIn() {
   document.getElementById("loginPage").style.display = "flex";
 }
 
-// Sign up functionality
+// Enhanced signup functionality with validation
 async function signup() {
   const name = document.getElementById('name').value.trim();
   const username = document.getElementById('signupUsername').value.trim();
@@ -21,13 +21,41 @@ async function signup() {
   const password = document.getElementById('signupPassword').value;
   const confirmPassword = document.getElementById('confirmPassword').value;
 
+  // Input validation
   if (!name || !username || !email || !password || !confirmPassword) {
     alert('Please fill all the fields.');
     return;
   }
 
+  // Email format validation
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    alert('Please enter a valid email address (e.g., user@example.com)');
+    return;
+  }
+
+  // Username validation (no spaces, special characters)
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+  if (!usernameRegex.test(username)) {
+    alert('Username must be 3-20 characters long and contain only letters, numbers, and underscores');
+    return;
+  }
+
+  // Password strength validation
+  if (password.length < 6) {
+    alert('Password must be at least 6 characters long');
+    return;
+  }
+
   if (password !== confirmPassword) {
     alert('Passwords do not match!');
+    return;
+  }
+
+  // Name validation (only letters and spaces)
+  const nameRegex = /^[a-zA-Z\s]{2,50}$/;
+  if (!nameRegex.test(name)) {
+    alert('Name must contain only letters and spaces (2-50 characters)');
     return;
   }
 
@@ -43,6 +71,12 @@ async function signup() {
     if (response.ok) {
       alert(data.message);
       showLogIn();
+      // Clear the form
+      document.getElementById('name').value = '';
+      document.getElementById('signupUsername').value = '';
+      document.getElementById('email').value = '';
+      document.getElementById('signupPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
     } else {
       alert(data.error || 'Signup failed.');
     }
@@ -52,7 +86,7 @@ async function signup() {
   }
 }
 
-// Login functionality - FIXED to properly load profile picture
+// Enhanced login function to load smart homepage
 async function login() {
   const user = document.getElementById("loginUsername").value;
   const pass = document.getElementById("password").value;
@@ -76,31 +110,28 @@ async function login() {
     if (response.ok) {
       const userName = data.name;
       const profilePicture = data.profilePicture || 'pp.jpg';
-
+      
       // Set user info
       document.getElementById("greetingUsername").textContent = userName;
-      currentUsername = user;
+      currentUsername = data.username || user; // Use returned username
 
-      // Load profile picture - FIXED
-      console.log('Loading profile picture:', profilePicture); // Debug log
+      // Load profile picture
+      console.log('Loading profile picture:', profilePicture);
       const profilePicElement = document.getElementById("profilePic");
-      if (profilePicture && profilePicture !== 'pp.jpg') {
-        // If user has a custom profile picture, load it
-        profilePicElement.src = profilePicture;
-      } else {
-        // Use default profile picture
-        profilePicElement.src = 'pp.jpg';
-      }
+      profilePicElement.src = profilePicture;
 
       // Show movie page
       document.getElementById("loginPage").style.display = "none";
       document.getElementById("moviePage").style.display = "block";
 
-      // Load user stats
+      // Load user stats and smart homepage
       await loadUserStats();
+      await loadSmartHomepage();
+      await loadGenres();
       
-      loadMovies();
-      loadGenres();
+      // Show welcome message
+      showNotification(`Welcome back, ${userName}! 🎬`, 'success');
+      
     } else {
       alert(data.message);
     }
@@ -108,6 +139,32 @@ async function login() {
   } catch (error) {
     alert("Network error. Please try again.");
     console.error(error);
+  }
+}
+
+// Load smart homepage with personalized recommendations
+async function loadSmartHomepage() {
+  try {
+    console.log('Loading smart homepage for user:', currentUsername);
+    
+    const response = await fetch(`/homepage-movies/${currentUsername}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      console.log('Smart homepage loaded:', data.stats);
+      displayMovies(data.movies);
+      
+      // Show a notification about personalized content
+      if (data.stats.personalized > 0) {
+        showNotification(`🎬 Found ${data.stats.personalized} personalized recommendations for you!`, 'success');
+      }
+    } else {
+      console.log('Smart homepage failed, loading all movies');
+      loadMovies();
+    }
+  } catch (error) {
+    console.error('Error loading smart homepage:', error);
+    loadMovies(); // Fallback to all movies
   }
 }
 
@@ -122,6 +179,11 @@ async function loadUserStats() {
     if (data.success) {
       document.getElementById("followersCount").textContent = data.stats.followers;
       document.getElementById("followingCount").textContent = data.stats.following;
+      
+      // Update the liked movies count display if you have it in your UI
+      if (document.getElementById("likedMoviesCount")) {
+        document.getElementById("likedMoviesCount").textContent = data.stats.likedMovies;
+      }
     }
   } catch (error) {
     console.error('Error loading user stats:', error);
@@ -153,7 +215,7 @@ function setupProfilePictureUpload() {
 
       const result = await response.json();
       if (result.success) {
-        alert("Profile picture updated!");
+        showNotification("Profile picture updated! 📸", 'success');
         
         // Update the profile picture immediately
         const profilePicElement = document.getElementById("profilePic");
@@ -191,6 +253,8 @@ function logout() {
   // Reset user stats
   document.getElementById("followersCount").textContent = '0';
   document.getElementById("followingCount").textContent = '0';
+  
+  showNotification("Logged out successfully! 👋", 'info');
 }
 
 // Delete account
@@ -261,10 +325,24 @@ async function displayMovies(movies) {
   for (const movie of movies) {
     const div = document.createElement('div');
     div.className = 'movie-card';
+    
+    // Check if this is a recommended movie
+    const isRecommended = movie._isRecommended;
+    const isPopular = movie._isPopular;
+    
+    if (isRecommended) {
+      div.classList.add('recommended-movie');
+    } else if (isPopular) {
+      div.classList.add('popular-movie');
+    }
+    
     const posterUrl = await getTMDBPoster(movie.name);
     div.innerHTML = `
+      ${isRecommended ? '<div class="recommendation-badge">Recommended for you</div>' : ''}
+      ${isPopular ? '<div class="popular-badge">Popular</div>' : ''}
       <h3>${movie.name}</h3>
       ${posterUrl ? `<img src="${posterUrl}" alt="${movie.name} poster" class="movie-poster" style="width:150px; cursor:pointer;" onclick='showMovieDetails(${JSON.stringify(movie)})'>` : '<p>No poster available</p>'}
+      <div class="movie-score">⭐ ${movie.score}/10</div>
     `;
     container.appendChild(div);
   }
@@ -314,6 +392,7 @@ async function filterMoviesByGenre(selectedGenre) {
       div.innerHTML = `
         <h3>${movie.name}</h3>
         ${posterUrl ? `<img src="${posterUrl}" alt="${movie.name} poster" class="movie-poster" style="width:150px; cursor:pointer;" onclick='showMovieDetails(${JSON.stringify(movie)})'>` : '<p>No poster available</p>'}
+        <div class="movie-score">⭐ ${movie.score}/10</div>
       `;
       container.appendChild(div);
     }
@@ -345,6 +424,7 @@ async function sortMovies(criteria) {
       div.innerHTML = `
         <h3>${movie.name}</h3>
         ${posterUrl ? `<img src="${posterUrl}" alt="${movie.name} poster" class="movie-poster" style="width:150px; cursor:pointer;" onclick='showMovieDetails(${JSON.stringify(movie)})'>` : '<p>No poster available</p>'}
+        <div class="movie-score">⭐ ${movie.score}/10</div>
       `;
       container.appendChild(div);
     }
@@ -353,16 +433,29 @@ async function sortMovies(criteria) {
   }
 }
 
-// Show movie details - FIXED the like button issue
+// Enhanced show movie details with like/dislike status
 async function showMovieDetails(movie) {
   currentMovieName = movie.name;
   const modal = document.getElementById("movieModal");
   const modalDetails = document.getElementById("modalDetails");
   const posterUrl = await getTMDBPoster(movie.name);
   
+  // Check if user has already liked/disliked this movie
+  let movieStatus = 'neutral';
+  try {
+    const statusResponse = await fetch(`/movie-status/${currentUsername}/${encodeURIComponent(movie.name)}`);
+    const statusData = await statusResponse.json();
+    if (statusData.success) {
+      movieStatus = statusData.status;
+    }
+  } catch (error) {
+    console.error('Error checking movie status:', error);
+  }
+  
   modalDetails.innerHTML = `
     <div class="modal-title">
       <h2>${movie.name}</h2>
+      ${movieStatus !== 'neutral' ? `<p class="movie-status ${movieStatus}">You ${movieStatus} this movie</p>` : ''}
     </div>
     <div class="modal-body">
       <div class="modal-poster">
@@ -371,7 +464,7 @@ async function showMovieDetails(movie) {
       <div class="modal-info">
         <p><strong>Genre:</strong> ${movie.genre}</p>
         <p><strong>Year:</strong> ${typeof movie.year === 'object' ? movie.year.low : movie.year}</p>
-        <p><strong>Score:</strong> ${movie.score}</p>
+        <p><strong>Score:</strong> ${movie.score}/10</p>
         <p><strong>Director:</strong> ${movie.director}</p>
         <p><strong>Writer:</strong> ${movie.writer}</p>
         <p><strong>Star:</strong> ${movie.star}</p>
@@ -381,14 +474,18 @@ async function showMovieDetails(movie) {
       </div>
     </div>
     <div class="modal-actions">
-      <button onclick="like()" class="action-btn like-btn">👍 Like</button>
-      <button onclick="dislike()" class="action-btn dislike-btn">👎 Dislike</button>
+      <button onclick="like()" class="action-btn like-btn ${movieStatus === 'liked' ? 'active' : ''}">
+        ${movieStatus === 'liked' ? '👍 Liked' : '👍 Like'}
+      </button>
+      <button onclick="dislike()" class="action-btn dislike-btn ${movieStatus === 'disliked' ? 'active' : ''}">
+        ${movieStatus === 'disliked' ? '👎 Disliked' : '👎 Dislike'}
+      </button>
     </div>
   `;
   modal.style.display = "block";
 }
 
-// FIXED Like function
+// Enhanced like function with immediate homepage refresh
 async function like() {
   if (!currentMovieName || !currentUsername) {
     alert('Please select a movie and make sure you are logged in.');
@@ -404,13 +501,19 @@ async function like() {
 
     const data = await res.json();
     if (data.success) {
-      alert('Movie liked!');
+      if (data.alreadyLiked) {
+        showNotification('You already liked this movie! 👍', 'info');
+      } else {
+        showNotification('Movie liked! 👍', 'success');
+        // Refresh the homepage with updated recommendations
+        await loadSmartHomepage();
+      }
+      
       // Close the modal
       document.getElementById("movieModal").style.display = "none";
-      // Update user stats after liking
+      
+      // Update user stats
       await loadUserStats();
-      // Refresh recommendations
-      await loadRecommendations();
     } else {
       alert(data.message || 'Error liking movie.');
     }
@@ -420,7 +523,7 @@ async function like() {
   }
 }
 
-// FIXED Dislike function
+// Enhanced dislike function with immediate homepage refresh
 async function dislike() {
   if (!currentMovieName || !currentUsername) {
     alert('Please select a movie and make sure you are logged in.');
@@ -436,13 +539,19 @@ async function dislike() {
 
     const data = await res.json();
     if (data.success) {
-      alert('Movie disliked!');
+      if (data.alreadyDisliked) {
+        showNotification('You already disliked this movie! 👎', 'info');
+      } else {
+        showNotification('Movie disliked! 👎', 'success');
+        // Refresh the homepage with updated recommendations
+        await loadSmartHomepage();
+      }
+      
       // Close the modal
       document.getElementById("movieModal").style.display = "none";
-      // Update user stats after disliking
+      
+      // Update user stats
       await loadUserStats();
-      // Refresh recommendations
-      await loadRecommendations();
     } else {
       alert(data.message || 'Error disliking movie.');
     }
@@ -452,7 +561,7 @@ async function dislike() {
   }
 }
 
-// Add recommendation loading function
+// Load recommendations
 async function loadRecommendations() {
   if (!currentUsername) return;
   
@@ -461,11 +570,12 @@ async function loadRecommendations() {
     const data = await response.json();
     if (data.success && data.movies && data.movies.length > 0) {
       console.log('Loaded recommendations:', data.movies.length);
-      // You can choose to display recommendations or keep showing all movies
-      // displayMovies(data.movies); // Uncomment this to show only recommendations
+      displayMovies(data.movies);
+      showNotification(`🎬 Showing ${data.movies.length} personalized recommendations!`, 'success');
     } else {
       console.log('No recommendations found, showing all movies');
       loadMovies(); // Show all movies if no recommendations
+      showNotification('No personalized recommendations yet. Like some movies to get started! 🎬', 'info');
     }
   } catch (error) {
     console.error('Error loading recommendations:', error);
@@ -473,7 +583,94 @@ async function loadRecommendations() {
   }
 }
 
-// Remove the duplicate likeMovie function - we only need the like() function above
+// Notification system
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.textContent = message;
+  
+  // Style the notification
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 10000;
+    font-weight: 500;
+    max-width: 300px;
+    word-wrap: break-word;
+    animation: slideInRight 0.3s ease-out;
+  `;
+  
+  // Add animation keyframes if not already added
+  if (!document.getElementById('notification-styles')) {
+    const style = document.createElement('style');
+    style.id = 'notification-styles';
+    style.textContent = `
+      @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(notification);
+  
+  // Auto remove after 3 seconds
+  setTimeout(() => {
+    notification.style.animation = 'slideOutRight 0.3s ease-in forwards';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
+}
+
+// Debug function to check current user's likes and dislikes
+async function debugUserActivity() {
+  if (!currentUsername) {
+    console.log('No user logged in');
+    return;
+  }
+
+  try {
+    console.log(`=== DEBUG INFO FOR USER: ${currentUsername} ===`);
+    
+    // Check liked movies
+    const likesResponse = await fetch(`/user-likes/${currentUsername}`);
+    const likesData = await likesResponse.json();
+    console.log('LIKED MOVIES:', likesData.movies);
+    console.log('LIKED COUNT:', likesData.count);
+    
+    // Check disliked movies
+    const dislikesResponse = await fetch(`/user-dislikes/${currentUsername}`);
+    const dislikesData = await dislikesResponse.json();
+    console.log('DISLIKED MOVIES:', dislikesData.movies);
+    console.log('DISLIKED COUNT:', dislikesData.count);
+    
+    // Check recommendations
+    const recsResponse = await fetch(`/recommendations/${currentUsername}`);
+    const recsData = await recsResponse.json();
+    console.log('RECOMMENDATIONS:', recsData.movies);
+    console.log('RECOMMENDATIONS COUNT:', recsData.movies ? recsData.movies.length : 0);
+    
+    console.log('=== END DEBUG INFO ===');
+    
+  } catch (error) {
+    console.error('Debug error:', error);
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const userBubble = document.getElementById("userBubble");
@@ -493,6 +690,29 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   setupProfilePictureUpload();
+  
+  // Add debug button for development
+  if (window.location.hostname === 'localhost') {
+    const debugButton = document.createElement('button');
+    debugButton.textContent = 'Debug User Activity';
+    debugButton.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 9999; background: red; color: white; padding: 10px; cursor: pointer; border: none; border-radius: 5px;';
+    debugButton.onclick = debugUserActivity;
+    document.body.appendChild(debugButton);
+    
+    // Add recommendation button
+    const recsButton = document.createElement('button');
+    recsButton.textContent = 'Show Recommendations';
+    recsButton.style.cssText = 'position: fixed; top: 50px; right: 10px; z-index: 9999; background: blue; color: white; padding: 10px; cursor: pointer; border: none; border-radius: 5px;';
+    recsButton.onclick = loadRecommendations;
+    document.body.appendChild(recsButton);
+    
+    // Add all movies button
+    const allMoviesButton = document.createElement('button');
+    allMoviesButton.textContent = 'Show All Movies';
+    allMoviesButton.style.cssText = 'position: fixed; top: 90px; right: 10px; z-index: 9999; background: green; color: white; padding: 10px; cursor: pointer; border: none; border-radius: 5px;';
+    allMoviesButton.onclick = loadMovies;
+    document.body.appendChild(allMoviesButton);
+  }
 });
 
 // Close modal when the user clicks on <span> (x)
@@ -508,8 +728,24 @@ window.onclick = function (event) {
   }
 };
 
+// Enhanced search functionality
 document.getElementById('searchBar').addEventListener('input', function () {
   const query = this.value.trim().toLowerCase();
-  const filtered = allMovies.filter(movie => movie.name.toLowerCase().includes(query));
-  displayMovies(filtered);
+  if (query === '') {
+    // If search is empty, reload smart homepage
+    loadSmartHomepage();
+  } else {
+    // Filter movies based on search query
+    const filtered = allMovies.filter(movie => 
+      movie.name.toLowerCase().includes(query) ||
+      movie.genre.toLowerCase().includes(query) ||
+      movie.director.toLowerCase().includes(query) ||
+      movie.star.toLowerCase().includes(query)
+    );
+    displayMovies(filtered);
+    
+    if (filtered.length === 0) {
+      document.getElementById('movies').innerHTML = `<p>No movies found for "${query}"</p>`;
+    }
+  }
 });
