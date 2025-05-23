@@ -52,7 +52,7 @@ async function signup() {
   }
 }
 
-// Login functionality
+// Login functionality - FIXED to properly load profile picture
 async function login() {
   const user = document.getElementById("loginUsername").value;
   const pass = document.getElementById("password").value;
@@ -75,14 +75,30 @@ async function login() {
 
     if (response.ok) {
       const userName = data.name;
-      const profilePicture = data.profilePicture || 'pp.jpg'; // Use server profile picture or default
+      const profilePicture = data.profilePicture || 'pp.jpg';
 
+      // Set user info
       document.getElementById("greetingUsername").textContent = userName;
-      document.getElementById("profilePic").src = profilePicture;
-      document.getElementById("loginPage").style.display = "none";
-      document.getElementById("moviePage").style.display = "block";
       currentUsername = user;
 
+      // Load profile picture - FIXED
+      console.log('Loading profile picture:', profilePicture); // Debug log
+      const profilePicElement = document.getElementById("profilePic");
+      if (profilePicture && profilePicture !== 'pp.jpg') {
+        // If user has a custom profile picture, load it
+        profilePicElement.src = profilePicture;
+      } else {
+        // Use default profile picture
+        profilePicElement.src = 'pp.jpg';
+      }
+
+      // Show movie page
+      document.getElementById("loginPage").style.display = "none";
+      document.getElementById("moviePage").style.display = "block";
+
+      // Load user stats
+      await loadUserStats();
+      
       loadMovies();
       loadGenres();
     } else {
@@ -92,6 +108,23 @@ async function login() {
   } catch (error) {
     alert("Network error. Please try again.");
     console.error(error);
+  }
+}
+
+// Load user statistics (followers, following counts)
+async function loadUserStats() {
+  if (!currentUsername) return;
+
+  try {
+    const response = await fetch(`/user-stats/${currentUsername}`);
+    const data = await response.json();
+
+    if (data.success) {
+      document.getElementById("followersCount").textContent = data.stats.followers;
+      document.getElementById("followingCount").textContent = data.stats.following;
+    }
+  } catch (error) {
+    console.error('Error loading user stats:', error);
   }
 }
 
@@ -121,9 +154,16 @@ function setupProfilePictureUpload() {
       const result = await response.json();
       if (result.success) {
         alert("Profile picture updated!");
-        document.getElementById("profilePic").src = result.newPfpPath;
+        
+        // Update the profile picture immediately
+        const profilePicElement = document.getElementById("profilePic");
+        profilePicElement.src = result.newPfpPath;
+        
         // Hide the popup after successful upload
         document.getElementById("userPopup").style.display = "none";
+        
+        // Clear the file input
+        fileInput.value = '';
       } else {
         alert("Failed to update profile picture: " + (result.message || "Unknown error"));
       }
@@ -140,13 +180,22 @@ function logout() {
   document.getElementById("moviePage").style.display = "none";
   document.getElementById("loginPage").style.display = "flex";
   document.getElementById("userPopup").style.display = "none";
+  
   // Reset profile picture to default
   document.getElementById("profilePic").src = "pp.jpg";
+  
+  // Clear login form
+  document.getElementById("loginUsername").value = '';
+  document.getElementById("password").value = '';
+  
+  // Reset user stats
+  document.getElementById("followersCount").textContent = '0';
+  document.getElementById("followingCount").textContent = '0';
 }
 
 // Delete account
 async function deleteAccount() {
-  const confirmDelete = confirm("Are you sure you want to delete your account?");
+  const confirmDelete = confirm("Are you sure you want to delete your account? This action cannot be undone.");
   if (!confirmDelete) return;
 
   try {
@@ -345,7 +394,13 @@ async function like() {
     });
 
     const data = await res.json();
-    alert(data.message);
+    if (data.success) {
+      alert('Movie liked!');
+      // Update user stats after liking
+      await loadUserStats();
+    } else {
+      alert(data.message || 'Error liking movie.');
+    }
   } catch (error) {
     console.error('Error liking movie:', error);
   }
@@ -362,7 +417,13 @@ async function dislike() {
     });
 
     const data = await res.json();
-    alert(data.message);
+    if (data.success) {
+      alert('Movie disliked!');
+      // Update user stats after disliking
+      await loadUserStats();
+    } else {
+      alert(data.message || 'Error disliking movie.');
+    }
   } catch (error) {
     console.error('Error disliking movie:', error);
   }
@@ -381,6 +442,8 @@ async function likeMovie(movieName) {
       alert('Movie liked!');
       // Now fetch updated recommendations
       loadRecommendations();
+      // Update user stats
+      await loadUserStats();
     } else {
       alert('Error liking movie.');
     }
@@ -412,7 +475,6 @@ document.addEventListener("DOMContentLoaded", () => {
     userPopup.style.display = userPopup.style.display === "block" ? "none" : "block";
   });
 
-  // Remove localStorage profile picture loading - now handled by server
   // Set default profile picture initially
   document.getElementById("profilePic").src = "pp.jpg";
 
