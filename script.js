@@ -353,12 +353,13 @@ async function sortMovies(criteria) {
   }
 }
 
-// Show movie details
+// Show movie details - FIXED the like button issue
 async function showMovieDetails(movie) {
   currentMovieName = movie.name;
   const modal = document.getElementById("movieModal");
   const modalDetails = document.getElementById("modalDetails");
   const posterUrl = await getTMDBPoster(movie.name);
+  
   modalDetails.innerHTML = `
     <div class="modal-title">
       <h2>${movie.name}</h2>
@@ -379,12 +380,20 @@ async function showMovieDetails(movie) {
         <p><strong>Runtime:</strong> ${typeof movie.runtime === 'object' ? movie.runtime.low : movie.runtime} minutes</p>
       </div>
     </div>
+    <div class="modal-actions">
+      <button onclick="like()" class="action-btn like-btn">👍 Like</button>
+      <button onclick="dislike()" class="action-btn dislike-btn">👎 Dislike</button>
+    </div>
   `;
   modal.style.display = "block";
 }
 
+// FIXED Like function
 async function like() {
-  if (!currentMovieName || !currentUsername) return;
+  if (!currentMovieName || !currentUsername) {
+    alert('Please select a movie and make sure you are logged in.');
+    return;
+  }
 
   try {
     const res = await fetch('/like', {
@@ -396,18 +405,27 @@ async function like() {
     const data = await res.json();
     if (data.success) {
       alert('Movie liked!');
+      // Close the modal
+      document.getElementById("movieModal").style.display = "none";
       // Update user stats after liking
       await loadUserStats();
+      // Refresh recommendations
+      await loadRecommendations();
     } else {
       alert(data.message || 'Error liking movie.');
     }
   } catch (error) {
     console.error('Error liking movie:', error);
+    alert('Failed to like movie.');
   }
 }
 
+// FIXED Dislike function
 async function dislike() {
-  if (!currentMovieName || !currentUsername) return;
+  if (!currentMovieName || !currentUsername) {
+    alert('Please select a movie and make sure you are logged in.');
+    return;
+  }
 
   try {
     const res = await fetch('/dislike', {
@@ -419,53 +437,43 @@ async function dislike() {
     const data = await res.json();
     if (data.success) {
       alert('Movie disliked!');
+      // Close the modal
+      document.getElementById("movieModal").style.display = "none";
       // Update user stats after disliking
       await loadUserStats();
+      // Refresh recommendations
+      await loadRecommendations();
     } else {
       alert(data.message || 'Error disliking movie.');
     }
   } catch (error) {
     console.error('Error disliking movie:', error);
+    alert('Failed to dislike movie.');
   }
 }
 
-async function likeMovie(movieName) {
-  try {
-    const response = await fetch('/like', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: currentUsername, movieName })
-    });
-
-    const result = await response.json();
-    if (result.success) {
-      alert('Movie liked!');
-      // Now fetch updated recommendations
-      loadRecommendations();
-      // Update user stats
-      await loadUserStats();
-    } else {
-      alert('Error liking movie.');
-    }
-  } catch (error) {
-    console.error('Error liking movie:', error);
-    alert('Failed to like movie.');
-  }
-}
-
+// Add recommendation loading function
 async function loadRecommendations() {
+  if (!currentUsername) return;
+  
   try {
     const response = await fetch(`/recommendations/${currentUsername}`);
     const data = await response.json();
-    if (data.success) {
-      displayMovies(data.movies);
+    if (data.success && data.movies && data.movies.length > 0) {
+      console.log('Loaded recommendations:', data.movies.length);
+      // You can choose to display recommendations or keep showing all movies
+      // displayMovies(data.movies); // Uncomment this to show only recommendations
     } else {
-      console.error('Failed to fetch recommendations');
+      console.log('No recommendations found, showing all movies');
+      loadMovies(); // Show all movies if no recommendations
     }
   } catch (error) {
     console.error('Error loading recommendations:', error);
+    loadMovies(); // Fallback to showing all movies
   }
 }
+
+// Remove the duplicate likeMovie function - we only need the like() function above
 
 document.addEventListener("DOMContentLoaded", () => {
   const userBubble = document.getElementById("userBubble");
