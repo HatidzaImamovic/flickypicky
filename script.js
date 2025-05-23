@@ -75,8 +75,10 @@ async function login() {
 
     if (response.ok) {
       const userName = data.name;
+      const profilePicture = data.profilePicture || 'pp.jpg'; // Use server profile picture or default
 
       document.getElementById("greetingUsername").textContent = userName;
+      document.getElementById("profilePic").src = profilePicture;
       document.getElementById("loginPage").style.display = "none";
       document.getElementById("moviePage").style.display = "block";
       currentUsername = user;
@@ -108,21 +110,22 @@ function setupProfilePictureUpload() {
 
     const formData = new FormData();
     formData.append("pfp", fileInput.files[0]);
+    formData.append("username", currentUsername); // Include username
 
     try {
       const response = await fetch("/upload-pfp", {
         method: "POST",
         body: formData,
-        credentials: "include"
       });
 
       const result = await response.json();
       if (result.success) {
         alert("Profile picture updated!");
         document.getElementById("profilePic").src = result.newPfpPath;
-        localStorage.setItem("profilePic", result.newPfpPath);
+        // Hide the popup after successful upload
+        document.getElementById("userPopup").style.display = "none";
       } else {
-        alert("Failed to update profile picture.");
+        alert("Failed to update profile picture: " + (result.message || "Unknown error"));
       }
     } catch (err) {
       console.error("Error uploading profile picture:", err);
@@ -131,18 +134,18 @@ function setupProfilePictureUpload() {
   });
 }
 
-
 // Logout
 function logout() {
+  currentUsername = '';
   document.getElementById("moviePage").style.display = "none";
   document.getElementById("loginPage").style.display = "flex";
-  document.getElementById("userMenu").style.display = "none";
-  document.getElementById("userGreeting").innerText = '';
+  document.getElementById("userPopup").style.display = "none";
+  // Reset profile picture to default
+  document.getElementById("profilePic").src = "pp.jpg";
 }
 
 // Delete account
 async function deleteAccount() {
-  const username = document.getElementById("username").value;
   const confirmDelete = confirm("Are you sure you want to delete your account?");
   if (!confirmDelete) return;
 
@@ -150,7 +153,7 @@ async function deleteAccount() {
     const response = await fetch('/delete-account', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ username: currentUsername })
     });
 
     const data = await response.json();
@@ -217,7 +220,6 @@ async function displayMovies(movies) {
     container.appendChild(div);
   }
 }
-
 
 // Load genres
 async function loadGenres() {
@@ -388,7 +390,6 @@ async function likeMovie(movieName) {
   }
 }
 
-
 async function loadRecommendations() {
   try {
     const response = await fetch(`/recommendations/${currentUsername}`);
@@ -403,40 +404,17 @@ async function loadRecommendations() {
   }
 }
 
-
 document.addEventListener("DOMContentLoaded", () => {
   const userBubble = document.getElementById("userBubble");
   const userPopup = document.getElementById("userPopup");
-  const profilePic = document.getElementById("profilePic");
-  const uploadPic = document.getElementById("uploadPic");
 
   userBubble.addEventListener("click", () => {
     userPopup.style.display = userPopup.style.display === "block" ? "none" : "block";
   });
 
-  profilePic.src = localStorage.getItem("profilePic") || "pp.jpg";
-
-  uploadPic.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        profilePic.src = reader.result;
-        localStorage.setItem("profilePic", reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-
-  function logout() {
-    alert("Logging out...");
-  }
-
-  function deleteAccount() {
-    if (confirm("Are you sure you want to delete your account?")) {
-      alert("Account deleted.");
-    }
-  }
+  // Remove localStorage profile picture loading - now handled by server
+  // Set default profile picture initially
+  document.getElementById("profilePic").src = "pp.jpg";
 
   window.addEventListener("click", function(e) {
     if (!userBubble.contains(e.target) && !userPopup.contains(e.target)) {
@@ -444,10 +422,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  setupProfilePictureUpload(); // <== CALL IT HERE
+  setupProfilePictureUpload();
 });
-
-
 
 // Close modal when the user clicks on <span> (x)
 document.querySelector(".close").onclick = function () {
