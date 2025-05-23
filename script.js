@@ -86,7 +86,7 @@ async function signup() {
   }
 }
 
-// Enhanced login function to load smart homepage AUTOMATICALLY
+// Enhanced login function to load smart homepage
 async function login() {
   const user = document.getElementById("loginUsername").value;
   const pass = document.getElementById("password").value;
@@ -124,9 +124,9 @@ async function login() {
       document.getElementById("loginPage").style.display = "none";
       document.getElementById("moviePage").style.display = "block";
 
-      // Load user stats and AUTOMATICALLY load smart homepage
+      // Load user stats and smart homepage
       await loadUserStats();
-      await loadSmartHomepage(); // This automatically loads recommendations
+      await loadSmartHomepage();
       await loadGenres();
       
       // Show welcome message
@@ -142,10 +142,10 @@ async function login() {
   }
 }
 
-// AUTOMATICALLY Load smart homepage with personalized recommendations
+// Load smart homepage with personalized recommendations
 async function loadSmartHomepage() {
   try {
-    console.log('AUTOMATICALLY loading smart homepage for user:', currentUsername);
+    console.log('Loading smart homepage for user:', currentUsername);
     
     const response = await fetch(`/homepage-movies/${currentUsername}`);
     const data = await response.json();
@@ -156,9 +156,7 @@ async function loadSmartHomepage() {
       
       // Show a notification about personalized content
       if (data.stats.personalized > 0) {
-        showNotification(`🎬 Automatically loaded ${data.stats.personalized} personalized recommendations for you!`, 'success');
-      } else {
-        showNotification(`🎬 Showing popular movies. Like some movies to get personalized recommendations!`, 'info');
+        showNotification(`🎬 Found ${data.stats.personalized} personalized recommendations for you!`, 'success');
       }
     } else {
       console.log('Smart homepage failed, loading all movies');
@@ -285,6 +283,10 @@ async function deleteAccount() {
   }
 }
 
+function resetToHome(){
+  loadMovies();
+}
+
 // Fetch TMDB poster
 async function getTMDBPoster(title) {
   const apiKey = 'c9399d7437ee9e8e41b2c5e521904b14';
@@ -303,14 +305,13 @@ async function getTMDBPoster(title) {
   return null;
 }
 
-// Load all movies (fallback when no recommendations)
+// Load movies
 async function loadMovies() {
   try {
     const response = await fetch('/movies');
     const data = await response.json();
     allMovies = data; // Cache all movies
     displayMovies(allMovies);
-    showNotification(`📋 Showing all ${allMovies.length} movies`, 'info');
   } catch (error) {
     console.error('Error loading movies:', error);
   }
@@ -351,27 +352,16 @@ async function displayMovies(movies) {
   }
 }
 
-// Enhanced load genres with HOME option
+// Load genres
 async function loadGenres() {
   try {
     const response = await fetch('/genres');
     const genres = await response.json();
     const dropdown = document.getElementById('genreDropdown');
     dropdown.innerHTML = '';
-    
-    // Add "Home" option to return to personalized homepage
-    const homeOption = document.createElement('a');
-    homeOption.href = '#';
-    homeOption.textContent = '🏠 Home (Personalized)';
-    homeOption.onclick = () => {
-      loadSmartHomepage();
-      showNotification('🏠 Back to your personalized homepage!', 'info');
-    };
-    dropdown.appendChild(homeOption);
-    
     const allOption = document.createElement('a');
     allOption.href = '#';
-    allOption.textContent = 'All Movies';
+    allOption.textContent = 'All';
     allOption.onclick = () => filterMoviesByGenre('All');
     dropdown.appendChild(allOption);
 
@@ -387,7 +377,7 @@ async function loadGenres() {
   }
 }
 
-// Enhanced filter movies by genre
+// Filter movies
 async function filterMoviesByGenre(selectedGenre) {
   try {
     const response = await fetch('/movies');
@@ -395,15 +385,10 @@ async function filterMoviesByGenre(selectedGenre) {
     const container = document.getElementById('movies');
     container.innerHTML = '';
     const filtered = selectedGenre === 'All' ? data : data.filter(movie => movie.genre === selectedGenre);
-    
     if (!filtered.length) {
       container.innerHTML = `<p>No movies found in genre: ${selectedGenre}</p>`;
-      showNotification(`No movies found in ${selectedGenre} genre 😕`, 'info');
       return;
     }
-    
-    showNotification(`🎭 Showing ${filtered.length} ${selectedGenre === 'All' ? '' : selectedGenre} movies`, 'info');
-    
     for (const movie of filtered) {
       const div = document.createElement('div');
       div.className = 'movie-card';
@@ -420,7 +405,7 @@ async function filterMoviesByGenre(selectedGenre) {
   }
 }
 
-// Enhanced sort movies with notifications
+// Sort movies
 async function sortMovies(criteria) {
   try {
     const response = await fetch('/movies');
@@ -428,19 +413,13 @@ async function sortMovies(criteria) {
     const container = document.getElementById('movies');
     container.innerHTML = '';
 
-    let sortMessage = '';
     if (criteria === 'newest') {
       data.sort((a, b) => (b.year.low || b.year) - (a.year.low || a.year));
-      sortMessage = '📅 Sorted by newest movies first';
     } else if (criteria === 'oldest') {
       data.sort((a, b) => (a.year.low || a.year) - (b.year.low || b.year));
-      sortMessage = '📜 Sorted by oldest movies first';
     } else if (criteria === 'popular') {
       data.sort((a, b) => b.score - a.score);
-      sortMessage = '⭐ Sorted by highest rated movies first';
     }
-
-    showNotification(sortMessage, 'info');
 
     for (const movie of data) {
       const div = document.createElement('div');
@@ -510,14 +489,12 @@ async function showMovieDetails(movie) {
   modal.style.display = "block";
 }
 
-// FIXED like function with debugging
+// Enhanced like function with immediate homepage refresh
 async function like() {
   if (!currentMovieName || !currentUsername) {
     alert('Please select a movie and make sure you are logged in.');
     return;
   }
-
-  console.log('LIKE FUNCTION CALLED:', { currentMovieName, currentUsername }); // Debug
 
   try {
     const res = await fetch('/like', {
@@ -526,17 +503,13 @@ async function like() {
       body: JSON.stringify({ username: currentUsername, movieName: currentMovieName })
     });
 
-    console.log('LIKE RESPONSE STATUS:', res.status); // Debug
-
     const data = await res.json();
-    console.log('LIKE RESPONSE DATA:', data); // Debug
-
     if (data.success) {
       if (data.alreadyLiked) {
         showNotification('You already liked this movie! 👍', 'info');
       } else {
-        showNotification(`Movie "${currentMovieName}" liked! 👍 Your recommendations will update!`, 'success');
-        // AUTOMATICALLY refresh the homepage with updated recommendations
+        showNotification('Movie liked! 👍', 'success');
+        // Refresh the homepage with updated recommendations
         await loadSmartHomepage();
       }
       
@@ -546,7 +519,6 @@ async function like() {
       // Update user stats
       await loadUserStats();
     } else {
-      console.error('LIKE FAILED:', data.message);
       alert(data.message || 'Error liking movie.');
     }
   } catch (error) {
@@ -555,14 +527,12 @@ async function like() {
   }
 }
 
-// FIXED dislike function with debugging
+// Enhanced dislike function with immediate homepage refresh
 async function dislike() {
   if (!currentMovieName || !currentUsername) {
     alert('Please select a movie and make sure you are logged in.');
     return;
   }
-
-  console.log('DISLIKE FUNCTION CALLED:', { currentMovieName, currentUsername }); // Debug
 
   try {
     const res = await fetch('/dislike', {
@@ -571,17 +541,13 @@ async function dislike() {
       body: JSON.stringify({ username: currentUsername, movieName: currentMovieName })
     });
 
-    console.log('DISLIKE RESPONSE STATUS:', res.status); // Debug
-
     const data = await res.json();
-    console.log('DISLIKE RESPONSE DATA:', data); // Debug
-
     if (data.success) {
       if (data.alreadyDisliked) {
         showNotification('You already disliked this movie! 👎', 'info');
       } else {
-        showNotification(`Movie "${currentMovieName}" disliked! 👎 Your recommendations will update!`, 'success');
-        // AUTOMATICALLY refresh the homepage with updated recommendations
+        showNotification('Movie disliked! 👎', 'success');
+        // Refresh the homepage with updated recommendations
         await loadSmartHomepage();
       }
       
@@ -591,12 +557,33 @@ async function dislike() {
       // Update user stats
       await loadUserStats();
     } else {
-      console.error('DISLIKE FAILED:', data.message);
       alert(data.message || 'Error disliking movie.');
     }
   } catch (error) {
     console.error('Error disliking movie:', error);
     alert('Failed to dislike movie.');
+  }
+}
+
+// Load recommendations
+async function loadRecommendations() {
+  if (!currentUsername) return;
+  
+  try {
+    const response = await fetch(`/recommendations/${currentUsername}`);
+    const data = await response.json();
+    if (data.success && data.movies && data.movies.length > 0) {
+      console.log('Loaded recommendations:', data.movies.length);
+      displayMovies(data.movies);
+      showNotification(`🎬 Showing ${data.movies.length} personalized recommendations!`, 'success');
+    } else {
+      console.log('No recommendations found, showing all movies');
+      loadMovies(); // Show all movies if no recommendations
+      showNotification('No personalized recommendations yet. Like some movies to get started! 🎬', 'info');
+    }
+  } catch (error) {
+    console.error('Error loading recommendations:', error);
+    loadMovies(); // Fallback to showing all movies
   }
 }
 
@@ -654,7 +641,9 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
-// CLEAN DOM READY - NO DEBUG BUTTONS
+// Debug function to check current user's likes and dislikes
+
+
 document.addEventListener("DOMContentLoaded", () => {
   const userBubble = document.getElementById("userBubble");
   const userPopup = document.getElementById("userPopup");
@@ -674,8 +663,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setupProfilePictureUpload();
   
-  // NO DEBUG BUTTONS - CLEAN UI
-  console.log('FlickPicky loaded - No debug buttons, clean UI! 🎬');
+  // Add debug button for development
+  if (window.location.hostname === 'localhost') {
+    
+    // Add recommendation button
+    const recsButton = document.createElement('button');
+    recsButton.textContent = 'Show Recommendations';
+    recsButton.style.cssText = 'position: fixed; top: 50px; right: 10px; z-index: 9999; background: blue; color: white; padding: 10px; cursor: pointer; border: none; border-radius: 5px;';
+    recsButton.onclick = loadRecommendations;
+    document.body.appendChild(recsButton);
+  }
 });
 
 // Close modal when the user clicks on <span> (x)
@@ -691,11 +688,11 @@ window.onclick = function (event) {
   }
 };
 
-// Enhanced search functionality with automatic homepage return
+// Enhanced search functionality
 document.getElementById('searchBar').addEventListener('input', function () {
   const query = this.value.trim().toLowerCase();
   if (query === '') {
-    // If search is empty, AUTOMATICALLY reload smart homepage
+    // If search is empty, reload smart homepage
     loadSmartHomepage();
   } else {
     // Filter movies based on search query
@@ -709,9 +706,6 @@ document.getElementById('searchBar').addEventListener('input', function () {
     
     if (filtered.length === 0) {
       document.getElementById('movies').innerHTML = `<p>No movies found for "${query}"</p>`;
-      showNotification(`No movies found for "${query}" 🔍`, 'info');
-    } else {
-      showNotification(`🔍 Found ${filtered.length} movies matching "${query}"`, 'info');
     }
   }
 });
