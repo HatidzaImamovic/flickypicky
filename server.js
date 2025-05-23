@@ -267,31 +267,49 @@ app.get('/genres', async (req, res) => {
     await session.close();
   }
 });
-// FIXED SERVER ROUTES - Replace your existing like, dislike, and recommendations routes with these:
 
-// FIXED Like a movie - Creates LIKES relationship
+// FIXED SERVER ROUTES - Replace your like/dislike routes with these:
+
+// FIXED Like a movie - Removes dislike if exists, then creates like
 app.post('/like', async (req, res) => {
   const { username, movieName } = req.body;
   const session = driver.session();
 
-  console.log(`User ${username} is trying to like movie: ${movieName}`); // Debug log
+  console.log(`User ${username} is trying to like movie: ${movieName}`);
 
   try {
-    // Remove any existing dislike and add like
-    await session.run(`
+    const result = await session.run(`
       MATCH (u:User {username: $username}), (m:Movie {name: $movieName})
       
-      // Remove existing DISLIKE relationship if it exists
-      OPTIONAL MATCH (u)-[dislike:DISLIKES]->(m)
-      DELETE dislike
+      // Check if movie is already liked
+      OPTIONAL MATCH (u)-[existingLike:LIKES]->(m)
       
-      // Create LIKES relationship
+      // Check if movie is currently disliked
+      OPTIONAL MATCH (u)-[existingDislike:DISLIKES]->(m)
+      
+      // If already liked, return without changes
+      WITH u, m, existingLike, existingDislike
+      WHERE existingLike IS NULL
+      
+      // Remove dislike if it exists
+      FOREACH (dislike IN CASE WHEN existingDislike IS NOT NULL THEN [existingDislike] ELSE [] END |
+        DELETE dislike
+      )
+      
+      // Create the like relationship
       MERGE (u)-[:LIKES]->(m)
+      
+      RETURN 'success' as result
     `, { username, movieName });
 
-    console.log(`Successfully liked movie ${movieName} for user ${username}`); // Debug log
+    if (result.records.length === 0) {
+      // Movie was already liked
+      return res.json({ success: true, message: "Movie was already liked", alreadyLiked: true });
+    }
 
+    console.log(`Successfully liked movie ${movieName} for user ${username}`);
     res.json({ success: true, message: "Movie liked successfully" });
+
   } catch (error) {
     console.error("Error liking movie:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -300,32 +318,82 @@ app.post('/like', async (req, res) => {
   }
 });
 
-// FIXED Dislike a movie - Creates DISLIKES relationship
+// FIXED Dislike a movie - Removes like if exists, then creates dislike
 app.post('/dislike', async (req, res) => {
   const { username, movieName } = req.body;
   const session = driver.session();
 
-  console.log(`User ${username} is trying to dislike movie: ${movieName}`); // Debug log
+  console.log(`User ${username} is trying to dislike movie: ${movieName}`);
 
   try {
-    // Remove any existing like and add dislike
-    await session.run(`
+    const result = await session.run(`
       MATCH (u:User {username: $username}), (m:Movie {name: $movieName})
       
-      // Remove existing LIKE relationship if it exists
-      OPTIONAL MATCH (u)-[like:LIKES]->(m)
-      DELETE like
+      // Check if movie is already disliked
+      OPTIONAL MATCH (u)-[existingDislike:DISLIKES]->(m)
       
-      // Create DISLIKES relationship
+      // Check if movie is currently liked
+      OPTIONAL MATCH (u)-[existingLike:LIKES]->(m)
+      
+      // If already disliked, return without changes
+      WITH u, m, existingLike, existingDislike
+      WHERE existingDislike IS NULL
+      
+      // Remove like if it exists
+      FOREACH (like IN CASE WHEN existingLike IS NOT NULL THEN [existingLike] ELSE [] END |
+        DELETE like
+      )
+      
+      // Create the dislike relationship
       MERGE (u)-[:DISLIKES]->(m)
+      
+      RETURN 'success' as result
     `, { username, movieName });
 
-    console.log(`Successfully disliked movie ${movieName} for user ${username}`); // Debug log
+    if (result.records.length === 0) {
+      // Movie was already disliked
+      return res.json({ success: true, message: "Movie was already disliked", alreadyDisliked: true });
+    }
 
+    console.log(`Successfully disliked movie ${movieName} for user ${username}`);
     res.json({ success: true, message: "Movie disliked successfully" });
+
   } catch (error) {
     console.error("Error disliking movie:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
+  } finally {
+    await session.close();
+  }
+});
+
+// Add route to check movie status for a user
+app.get('/movie-status/:username/:movieName', async (req, res) => {
+  const { username, movieName } = req.params;
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (u:User {username: $username}), (m:Movie {name: $movieName})
+      
+      OPTIONAL MATCH (u)-[like:LIKES]->(m)
+      OPTIONAL MATCH (u)-[dislike:DISLIKES]->(m)
+      
+      RETURN 
+        CASE WHEN like IS NOT NULL THEN 'liked' 
+             WHEN dislike IS NOT NULL THEN 'disliked' 
+             ELSE 'neutral' END as status
+    `, { username, movieName });
+
+    if (result.records.length > 0) {
+      const status = result.records[0].get('status');
+      res.json({ success: true, status });
+    } else {
+      res.json({ success: true, status: 'neutral' });
+    }
+
+  } catch (error) {
+    console.error("Error checking movie status:", error);
+    res.status(500).json({ success: false, message: "Error checking movie status" });
   } finally {
     await session.close();
   }
