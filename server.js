@@ -93,7 +93,8 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// Route: Login
+// Updated Login Route - Add this to replace your existing login route in server.js
+
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const session = driver.session();
@@ -113,7 +114,10 @@ app.post('/login', async (req, res) => {
 
     if (isMatch) {
       const userName = result.records[0].get('name');
+      // Get profile picture path, default to 'pp.jpg' if none exists
       const profilePicture = result.records[0].get('profilePicture') || 'pp.jpg';
+      
+      console.log(`User ${username} logged in with profile picture: ${profilePicture}`); // Debug log
       
       res.json({ 
         message: 'Login successful', 
@@ -125,14 +129,68 @@ app.post('/login', async (req, res) => {
     }
 
   } catch (err) {
-    console.error(err);
+    console.error('Login error:', err);
     res.status(500).json({ message: 'Internal server error' });
   } finally {
     await session.close();
   }
 });
 
-// Route: Upload profile picture
+// Also make sure your signup route sets a default profile picture
+app.post('/signup', async (req, res) => {
+  const { name, username, email, password } = req.body;
+
+  if (!name || !username || !email || !password) {
+    return res.status(400).json({ error: 'Please fill all required fields.' });
+  }
+
+  const session = driver.session();
+
+  try {
+    const checkUserQuery = `
+      MATCH (u:User)
+      WHERE u.username = $username OR u.email = $email
+      RETURN u LIMIT 1
+    `;
+    const result = await session.run(checkUserQuery, { username, email });
+
+    if (result.records.length > 0) {
+      return res.status(400).json({ error: 'User with that username or email already exists.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const createUserQuery = `
+      CREATE (u:User {
+        name: $name,
+        username: $username,
+        email: $email,
+        password: $password,
+        profilePicture: $defaultPfp
+      })
+      RETURN u
+    `;
+
+    await session.run(createUserQuery, {
+      name,
+      username,
+      email,
+      password: hashedPassword,
+      defaultPfp: 'pp.jpg' // Ensure every new user has a default profile picture
+    });
+
+    console.log(`New user ${username} created with default profile picture`); // Debug log
+
+    res.status(201).json({ message: 'User created successfully!' });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  } finally {
+    await session.close();
+  }
+});
+
+// Updated profile picture upload route
 app.post("/upload-pfp", upload.single("pfp"), async (req, res) => {
   const username = req.body.username;
 
@@ -145,7 +203,7 @@ app.post("/upload-pfp", upload.single("pfp"), async (req, res) => {
 
   try {
     // Update the user's profile picture in the database
-    await session.run(
+    const result = await session.run(
       `
       MATCH (u:User {username: $username})
       SET u.profilePicture = $filePath
@@ -153,6 +211,12 @@ app.post("/upload-pfp", upload.single("pfp"), async (req, res) => {
       `,
       { username, filePath }
     );
+
+    if (result.records.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    console.log(`Profile picture updated for user ${username}: ${filePath}`); // Debug log
 
     res.json({ success: true, newPfpPath: filePath });
   } catch (err) {
