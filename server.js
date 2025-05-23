@@ -267,20 +267,31 @@ app.get('/genres', async (req, res) => {
     await session.close();
   }
 });
+// FIXED SERVER ROUTES - Replace your existing like, dislike, and recommendations routes with these:
 
-// Like a movie
+// FIXED Like a movie - Creates LIKES relationship
 app.post('/like', async (req, res) => {
   const { username, movieName } = req.body;
   const session = driver.session();
 
-  try {
-    await session.run(
-      `MATCH (u:User {username: $username}), (m:Movie {name: $movieName})
-       MERGE (u)-[:LIKES]->(m)`,
-      { username, movieName }
-    );
+  console.log(`User ${username} is trying to like movie: ${movieName}`); // Debug log
 
-    res.json({ success: true, message: "Liked successfully" });
+  try {
+    // Remove any existing dislike and add like
+    await session.run(`
+      MATCH (u:User {username: $username}), (m:Movie {name: $movieName})
+      
+      // Remove existing DISLIKE relationship if it exists
+      OPTIONAL MATCH (u)-[dislike:DISLIKES]->(m)
+      DELETE dislike
+      
+      // Create LIKES relationship
+      MERGE (u)-[:LIKES]->(m)
+    `, { username, movieName });
+
+    console.log(`Successfully liked movie ${movieName} for user ${username}`); // Debug log
+
+    res.json({ success: true, message: "Movie liked successfully" });
   } catch (error) {
     console.error("Error liking movie:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -289,13 +300,15 @@ app.post('/like', async (req, res) => {
   }
 });
 
-// Dislike a movie (ENHANCED)
+// FIXED Dislike a movie - Creates DISLIKES relationship
 app.post('/dislike', async (req, res) => {
   const { username, movieName } = req.body;
   const session = driver.session();
 
+  console.log(`User ${username} is trying to dislike movie: ${movieName}`); // Debug log
+
   try {
-    // Remove like and add dislike
+    // Remove any existing like and add dislike
     await session.run(`
       MATCH (u:User {username: $username}), (m:Movie {name: $movieName})
       
@@ -303,11 +316,13 @@ app.post('/dislike', async (req, res) => {
       OPTIONAL MATCH (u)-[like:LIKES]->(m)
       DELETE like
       
-      // Add DISLIKE relationship
+      // Create DISLIKES relationship
       MERGE (u)-[:DISLIKES]->(m)
     `, { username, movieName });
 
-    res.json({ success: true, message: "Disliked successfully" });
+    console.log(`Successfully disliked movie ${movieName} for user ${username}`); // Debug log
+
+    res.json({ success: true, message: "Movie disliked successfully" });
   } catch (error) {
     console.error("Error disliking movie:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -316,39 +331,128 @@ app.post('/dislike', async (req, res) => {
   }
 });
 
-// Enhanced recommendations
+// FIXED Enhanced recommendations based on movie properties
 app.get('/recommendations/:username', async (req, res) => {
   const { username } = req.params;
   const session = driver.session();
 
   try {
-    // Multi-layered recommendation approach
+    console.log(`Getting recommendations for user: ${username}`); // Debug log
+
+    // Get content-based recommendations
     const result = await session.run(`
-      // Content-based: Similar movies by genre, director, etc.
+      // Find movies liked by the user
       MATCH (u:User {username: $username})-[:LIKES]->(liked:Movie)
       
+      // Find similar movies based on genre, director, company, star
       MATCH (similar:Movie)
       WHERE similar <> liked
       AND (
         similar.genre = liked.genre OR
         similar.director = liked.director OR
-        similar.star = liked.star OR
-        ABS(toInteger(similar.year) - toInteger(liked.year)) <= 5
+        similar.company = liked.company OR
+        similar.star = liked.star
       )
+      // Exclude movies already liked or disliked
       AND NOT EXISTS((u)-[:LIKES]->(similar))
       AND NOT EXISTS((u)-[:DISLIKES]->(similar))
       
-      WITH similar, COUNT(DISTINCT liked) as similarity_score
-      RETURN similar, similarity_score
-      ORDER BY similarity_score DESC, similar.score DESC
+      // Score based on number of matching criteria
+      WITH similar, 
+           COUNT(DISTINCT CASE WHEN similar.genre = liked.genre THEN 1 END) as genre_matches,
+           COUNT(DISTINCT CASE WHEN similar.director = liked.director THEN 1 END) as director_matches,
+           COUNT(DISTINCT CASE WHEN similar.company = liked.company THEN 1 END) as company_matches,
+           COUNT(DISTINCT CASE WHEN similar.star = liked.star THEN 1 END) as star_matches,
+           COUNT(DISTINCT liked) as total_liked_movies
+      
+      WITH similar, 
+           (genre_matches + director_matches + company_matches + star_matches) as similarity_score,
+           similar.score as movie_score
+      
+      WHERE similarity_score > 0
+      
+      RETURN similar, similarity_score, movie_score
+      ORDER BY similarity_score DESC, movie_score DESC
       LIMIT 20
     `, { username });
 
-    const movies = result.records.map(record => record.get('similar').properties);
-    res.json({ success: true, movies });
+    const movies = result.records.map(record => {
+      const movie = record.get('similar').properties;
+      const score = record.get('similarity_score').low || record.get('similarity_score');
+      console.log(`Recommended: ${movie.name} (score: ${score})`); // Debug log
+      return movie;
+    });
+
+    console.log(`Found ${movies.length} recommendations for ${username}`); // Debug log
+
+    if (movies.length === 0) {
+      // If no recommendations found, try a simpler approach - popular movies not yet rated
+      const fallbackResult = await session.run(`
+        MATCH (u:User {username: $username})
+        MATCH (m:Movie)
+        WHERE NOT EXISTS((u)-[:LIKES]->(m))
+        AND NOT EXISTS((u)-[:DISLIKES]->(m))
+        AND m.score IS NOT NULL
+        RETURN m
+        ORDER BY m.score DESC
+        LIMIT 10
+      `, { username });
+
+      const fallbackMovies = fallbackResult.records.map(record => record.get('m').properties);
+      console.log(`Using fallback recommendations: ${fallbackMovies.length} movies`); // Debug log
+      
+      res.json({ success: true, movies: fallbackMovies });
+    } else {
+      res.json({ success: true, movies });
+    }
+
   } catch (error) {
     console.error('Recommendation error:', error);
     res.status(500).json({ success: false, message: 'Recommendation failed' });
+  } finally {
+    await session.close();
+  }
+});
+
+// Add route to get user's liked movies (for debugging)
+app.get('/user-likes/:username', async (req, res) => {
+  const { username } = req.params;
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (u:User {username: $username})-[:LIKES]->(movie:Movie)
+      RETURN movie
+      ORDER BY movie.name
+    `, { username });
+
+    const likedMovies = result.records.map(record => record.get('movie').properties);
+    res.json({ success: true, movies: likedMovies, count: likedMovies.length });
+  } catch (error) {
+    console.error('Error getting liked movies:', error);
+    res.status(500).json({ success: false, message: 'Failed to get liked movies' });
+  } finally {
+    await session.close();
+  }
+});
+
+// Add route to get user's disliked movies (for debugging)
+app.get('/user-dislikes/:username', async (req, res) => {
+  const { username } = req.params;
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (u:User {username: $username})-[:DISLIKES]->(movie:Movie)
+      RETURN movie
+      ORDER BY movie.name
+    `, { username });
+
+    const dislikedMovies = result.records.map(record => record.get('movie').properties);
+    res.json({ success: true, movies: dislikedMovies, count: dislikedMovies.length });
+  } catch (error) {
+    console.error('Error getting disliked movies:', error);
+    res.status(500).json({ success: false, message: 'Failed to get disliked movies' });
   } finally {
     await session.close();
   }
