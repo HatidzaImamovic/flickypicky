@@ -6,7 +6,20 @@ const path = require('path');
 
 const app = express();
 const port = 3000;
-const upload = multer({ dest: "uploads/" });
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/') // Make sure this directory exists
+  },
+  filename: function (req, file, cb) {
+    // Create unique filename with timestamp and original extension
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // Middleware
 app.use(express.static('public'));
@@ -57,7 +70,8 @@ app.post('/signup', async (req, res) => {
         name: $name,
         username: $username,
         email: $email,
-        password: $password
+        password: $password,
+        profilePicture: $defaultPfp
       })
       RETURN u
     `;
@@ -67,6 +81,7 @@ app.post('/signup', async (req, res) => {
       username,
       email,
       password: hashedPassword,
+      defaultPfp: 'pp.jpg' // Set default profile picture for new users
     });
 
     res.status(201).json({ message: 'User created successfully!' });
@@ -85,7 +100,7 @@ app.post('/login', async (req, res) => {
 
   try {
     const result = await session.run(
-      'MATCH (u:User {username: $username}) RETURN u.name AS name, u.password AS password',
+      'MATCH (u:User {username: $username}) RETURN u.name AS name, u.password AS password, u.profilePicture AS profilePicture',
       { username }
     );
 
@@ -98,7 +113,13 @@ app.post('/login', async (req, res) => {
 
     if (isMatch) {
       const userName = result.records[0].get('name');
-      res.json({ message: 'Login successful', name: userName });
+      const profilePicture = result.records[0].get('profilePicture') || 'pp.jpg';
+      
+      res.json({ 
+        message: 'Login successful', 
+        name: userName,
+        profilePicture: profilePicture
+      });
     } else {
       res.status(401).json({ message: 'Incorrect password' });
     }
@@ -123,18 +144,46 @@ app.post("/upload-pfp", upload.single("pfp"), async (req, res) => {
   const session = driver.session();
 
   try {
+    // Update the user's profile picture in the database
     await session.run(
       `
       MATCH (u:User {username: $username})
       SET u.profilePicture = $filePath
+      RETURN u.profilePicture AS profilePicture
       `,
       { username, filePath }
     );
 
     res.json({ success: true, newPfpPath: filePath });
   } catch (err) {
-    console.error(err);
+    console.error("Error saving profile picture:", err);
     res.status(500).json({ success: false, message: 'Error saving profile picture.' });
+  } finally {
+    await session.close();
+  }
+});
+
+// Route: Get user profile picture
+app.get('/user-profile/:username', async (req, res) => {
+  const { username } = req.params;
+  const session = driver.session();
+
+  try {
+    const result = await session.run(
+      'MATCH (u:User {username: $username}) RETURN u.profilePicture AS profilePicture',
+      { username }
+    );
+
+    if (result.records.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const profilePicture = result.records[0].get('profilePicture') || 'pp.jpg';
+    res.json({ profilePicture });
+
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
   } finally {
     await session.close();
   }
@@ -146,6 +195,17 @@ app.post('/delete-account', async (req, res) => {
   const session = driver.session();
 
   try {
+    // Get user's profile picture path before deletion (to potentially clean up file)
+    const userResult = await session.run(
+      'MATCH (u:User {username: $username}) RETURN u.profilePicture AS profilePicture',
+      { username }
+    );
+
+    if (userResult.records.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Delete the user and all their relationships
     await session.run(
       'MATCH (u:User {username: $username}) DETACH DELETE u',
       { username }
@@ -259,7 +319,6 @@ app.get('/recommendations/:username', async (req, res) => {
     await session.close();
   }
 });
-
 
 // Start server
 app.listen(port, () => {
