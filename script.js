@@ -283,10 +283,6 @@ async function deleteAccount() {
   }
 }
 
-function resetToHome(){
-  loadMovies();
-}
-
 // Fetch TMDB poster
 async function getTMDBPoster(title) {
   const apiKey = 'c9399d7437ee9e8e41b2c5e521904b14';
@@ -641,7 +637,27 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
-// Debug function to check current user's likes and dislikes
+  function showFriends() {
+    // Hide movies section
+    document.getElementById('moviesSection').style.display = 'none';
+    
+    // Show friends section
+    document.getElementById('friendsSection').style.display = 'block';
+
+    document.getElementById('searchBar').placeholder = 'Search users...';
+  }
+
+  function resetToHome() {
+    // Show movies section
+    document.getElementById('moviesSection').style.display = 'block';
+
+    // Hide friends section
+    document.getElementById('friendsSection').style.display = 'none';
+
+    document.getElementById('searchBar').placeholder = 'Search movies...';
+
+    loadMovies();
+  }
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -689,10 +705,11 @@ window.onclick = function (event) {
 };
 
 // Enhanced search functionality
-document.getElementById('searchBar').addEventListener('input', function () {
+document.getElementById('searchBar').addEventListener('input', async function () {
   const query = this.value.trim().toLowerCase();
+  
   if (query === '') {
-    // If search is empty, reload smart homepage
+    await loadMovies();
     loadSmartHomepage();
   } else {
     // Filter movies based on search query
