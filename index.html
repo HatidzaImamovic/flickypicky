@@ -15,11 +15,17 @@
  <div id="mainLayout">
   <div class="navbar">
     <div class="navbar-container">
-      <div class="logo-container"><h1 class="logo">Flickypicky</h1></div>
+      <div class="logoPicture">
+        <img id="logoPic" src="logo.png" alt="logo" />
+      </div>
+      <div class="logo-container"><h1 class="logo" onclick="resetToHome()">Flickypicky</h1>
+      </div>
       
-      <!-- You can place a search bar here -->
+      
+     
       <input type="text" id="searchBar" placeholder="Search movies..." class="search-bar">
       <div id="searchResults"></div>
+    
 
       <div class="user-section">
         <span class="greeting">Hello, <span id="greetingUsername">User</span></span>
@@ -34,9 +40,7 @@
       <input type="file" id="uploadPic" name="pfp" accept="image/*" required />
       <button type="submit">Upload</button>
     </form>
-
-    <p>Followers: <span id="followersCount">0</span></p>
-    <p>Following: <span id="followingCount">0</span></p>
+    <button onclick="showFriends()">Friends</button>
     <button onclick="logout()">Log out</button>
     <button onclick="deleteAccount()">Delete Account</button>
   </div>
@@ -66,6 +70,14 @@
     <div id="moviesSection">
       <div id="movies"></div> <!-- Movies get inserted here -->
     </div>
+
+    <div id="friendsSection" style="display: none;">
+      
+      <h2>Your Friends</h2>
+      <p>This is where your friends will be listed.</p>
+  <!-- Add friend-related content here -->
+</div>
+
   </div>
 </div>
 
