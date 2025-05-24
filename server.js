@@ -49,7 +49,6 @@ app.get('/movies', async (req, res) => {
   }
 });
 
-// UPDATED SIGNUP ROUTE - Hash email for security
 app.post('/signup', async (req, res) => {
   const { name, username, email, password } = req.body;
 
@@ -106,8 +105,9 @@ app.post('/signup', async (req, res) => {
       }
     }
 
+    // Hash both password and email
     const hashedPassword = await bcrypt.hash(password, 10);
-    const hashedEmail = await bcrypt.hash(email.toLowerCase(), 10); // Hash the email
+    const hashedEmail = await bcrypt.hash(email.toLowerCase(), 10);
 
     const createUserQuery = `
       CREATE (u:User {
@@ -115,10 +115,9 @@ app.post('/signup', async (req, res) => {
         username: $username,
         email: $hashedEmail,
         originalEmail: $originalEmail,
-        password: $password,
+        password: $hashedPassword,
         profilePicture: $defaultPfp,
-        createdAt: datetime(),
-        isActive: true
+        createdAt: datetime()
       })
       RETURN u
     `;
@@ -126,13 +125,13 @@ app.post('/signup', async (req, res) => {
     await session.run(createUserQuery, {
       name: name.trim(),
       username: username.toLowerCase(),
-      hashedEmail: hashedEmail, // Store hashed email
-      originalEmail: email.toLowerCase(), // Store original for duplicate checking
-      password: hashedPassword,
+      hashedEmail: hashedEmail,
+      originalEmail: email.toLowerCase(), // Store original for duplicate checking only
+      hashedPassword: hashedPassword, // Fixed: was using $password instead of $hashedPassword
       defaultPfp: 'pp.jpg'
     });
 
-    console.log(`New user ${username} created successfully with hashed email`);
+    console.log(`New user ${username} created successfully with hashed email and password`);
 
     res.status(201).json({ 
       message: 'Account created successfully! You can now log in.',
