@@ -646,46 +646,6 @@ app.get('/homepage-movies/:username', async (req, res) => {
   }
 });
 
-// Get user statistics
-app.get('/user-stats/:username', async (req, res) => {
-  const { username } = req.params;
-  const session = driver.session();
-
-  try {
-    const result = await session.run(`
-      MATCH (u:User {username: $username})
-      
-      OPTIONAL MATCH (u)-[:FOLLOWS]->(following:User)
-      WITH u, COUNT(following) as following_count
-      
-      OPTIONAL MATCH (follower:User)-[:FOLLOWS]->(u)
-      WITH u, following_count, COUNT(follower) as followers_count
-      
-      OPTIONAL MATCH (u)-[:LIKES]->(liked:Movie)
-      WITH u, following_count, followers_count, COUNT(liked) as liked_movies_count
-      
-      RETURN following_count, followers_count, liked_movies_count
-    `, { username });
-
-    if (result.records.length > 0) {
-      const record = result.records[0];
-      const stats = {
-        followers: record.get('followers_count').low || record.get('followers_count') || 0,
-        following: record.get('following_count').low || record.get('following_count') || 0,
-        likedMovies: record.get('liked_movies_count').low || record.get('liked_movies_count') || 0
-      };
-      res.json({ success: true, stats });
-    } else {
-      res.json({ success: true, stats: { followers: 0, following: 0, likedMovies: 0 } });
-    }
-  } catch (error) {
-    console.error('Error getting user stats:', error);
-    res.status(500).json({ success: false, message: 'Failed to get user stats' });
-  } finally {
-    await session.close();
-  }
-});
-
 // Get user's liked movies (for debugging)
 app.get('/user-likes/:username', async (req, res) => {
   const { username } = req.params;
