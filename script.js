@@ -433,7 +433,6 @@ async function sortMovies(criteria) {
   }
 }
 
-// Enhanced show movie details with like/dislike status
 async function showMovieDetails(movie) {
   currentMovieName = movie.name;
   const modal = document.getElementById("movieModal");
@@ -473,15 +472,21 @@ async function showMovieDetails(movie) {
         <p><strong>Runtime:</strong> ${typeof movie.runtime === 'object' ? movie.runtime.low : movie.runtime} minutes</p>
       </div>
     </div>
-    <div class="modal-actions">
-      <button onclick="like()" class="action-btn like-btn ${movieStatus === 'liked' ? 'active' : ''}">
-        ${movieStatus === 'liked' ? '👍 Liked' : '👍 Like'}
-      </button>
-      <button onclick="dislike()" class="action-btn dislike-btn ${movieStatus === 'disliked' ? 'active' : ''}">
-        ${movieStatus === 'disliked' ? '👎 Disliked' : '👎 Dislike'}
-      </button>
-    </div>
   `;
+  
+  // Update the existing buttons to work properly
+  const modalImagesSection = document.querySelector('.modal-images');
+  if (modalImagesSection) {
+    modalImagesSection.innerHTML = `
+      <button onclick="like()" class="thumb-btn ${movieStatus === 'liked' ? 'active-like' : ''}">
+        <img src="like.png" alt="Like" />
+      </button>
+      <button onclick="dislike()" class="thumb-btn ${movieStatus === 'disliked' ? 'active-dislike' : ''}">
+        <img src="dislike.png" alt="Dislike" />
+      </button>
+    `;
+  }
+  
   modal.style.display = "block";
 }
 
