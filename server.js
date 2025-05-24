@@ -49,7 +49,7 @@ app.get('/movies', async (req, res) => {
   }
 });
 
-// Route: Signup with enhanced validation
+// UPDATED SIGNUP ROUTE - Hash email for security
 app.post('/signup', async (req, res) => {
   const { name, username, email, password } = req.body;
 
@@ -84,35 +84,37 @@ app.post('/signup', async (req, res) => {
   const session = driver.session();
 
   try {
-    // Check if user already exists (case-insensitive)
+    // Check if user already exists (case-insensitive) - use original email for checking
     const checkUserQuery = `
       MATCH (u:User)
-      WHERE toLower(u.username) = toLower($username) OR toLower(u.email) = toLower($email)
-      RETURN u.username as existingUsername, u.email as existingEmail
+      WHERE toLower(u.username) = toLower($username) OR u.originalEmail = toLower($email)
+      RETURN u.username as existingUsername, u.originalEmail as existingEmail
       LIMIT 1
     `;
-    const result = await session.run(checkUserQuery, { username, email });
+    const result = await session.run(checkUserQuery, { username, email: email.toLowerCase() });
 
     if (result.records.length > 0) {
       const existing = result.records[0];
       const existingUsername = existing.get('existingUsername');
       const existingEmail = existing.get('existingEmail');
       
-      if (existingUsername.toLowerCase() === username.toLowerCase()) {
+      if (existingUsername && existingUsername.toLowerCase() === username.toLowerCase()) {
         return res.status(400).json({ error: 'Username already exists. Please choose a different username.' });
       }
-      if (existingEmail.toLowerCase() === email.toLowerCase()) {
+      if (existingEmail && existingEmail === email.toLowerCase()) {
         return res.status(400).json({ error: 'Email already registered. Please use a different email or try logging in.' });
       }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedEmail = await bcrypt.hash(email.toLowerCase(), 10); // Hash the email
 
     const createUserQuery = `
       CREATE (u:User {
         name: $name,
         username: $username,
-        email: $email,
+        email: $hashedEmail,
+        originalEmail: $originalEmail,
         password: $password,
         profilePicture: $defaultPfp,
         createdAt: datetime(),
@@ -123,13 +125,14 @@ app.post('/signup', async (req, res) => {
 
     await session.run(createUserQuery, {
       name: name.trim(),
-      username: username.toLowerCase(), // Store username in lowercase for consistency
-      email: email.toLowerCase(), // Store email in lowercase for consistency
+      username: username.toLowerCase(),
+      hashedEmail: hashedEmail, // Store hashed email
+      originalEmail: email.toLowerCase(), // Store original for duplicate checking
       password: hashedPassword,
       defaultPfp: 'pp.jpg'
     });
 
-    console.log(`New user ${username} created successfully with email ${email}`);
+    console.log(`New user ${username} created successfully with hashed email`);
 
     res.status(201).json({ 
       message: 'Account created successfully! You can now log in.',
