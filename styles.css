@@ -248,6 +248,7 @@ h1, h2 {
   font-family: 'Sen', sans-serif;
   font-size: 45px;
   color: crimson;
+  cursor: pointer;
 }
 
 /* Style for the logo container */
@@ -322,6 +323,24 @@ h1, h2 {
   background-color: #555;
 }
 
+.allMoviesbtn {
+  background-color: #333;
+  color: white;
+  padding: 10px 15px;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+}
+
+.showRecbtn {
+  background-color: #333;
+  color: white;
+  padding: 10px 15px;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+}
+
 .user-section {
   display: flex;
   align-items: center;
@@ -351,12 +370,12 @@ h1, h2 {
   position: absolute;
   top: 60px;
   right: 20px;
-  background-color: white;
+  background-color: #000; /* BLACK background */
   border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); /* subtle white glow */
   padding: 15px;
   z-index: 999;
-  width: 200px;
+  width: 220px;
 }
 
 .user-popup .popup-content {
@@ -365,14 +384,52 @@ h1, h2 {
   gap: 10px;
 }
 
+.user-popup .popup-content button {
+  width: auto;
+  align-self: center;
+  min-width: 120px;
+  padding: 8px 16px;
+}
+
 .user-popup button {
-  padding: 8px;
+  padding: 8px 12px;
   border: none;
   background-color: #d9534f;
   color: white;
   cursor: pointer;
   border-radius: 5px;
+  font-size: 14px;
 }
+
+.pfp-label {
+  font-size: 14px;
+  color: white;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.pfp-form {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+
+.pfp-form input[type="file"] {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  max-width: 140px;
+}
+
+.pfp-form button {
+  padding: 6px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 
 .search-bar {
   padding: 6px 12px;
@@ -383,9 +440,6 @@ h1, h2 {
   border-radius: 8px;
   border: none;
 }
-
-
-
 
 .modal-body {
   display: flex;
@@ -415,4 +469,122 @@ h1, h2 {
   padding: 20px;
 }
 
+#friendsSection {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+#userResults {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.user-card {
+  background-color: #111;
+  border: 1px solid #333;
+  border-radius: 10px;
+  text-align: center;
+  padding: 15px;
+  color: white;
+  box-shadow: 0 2px 6px rgba(255, 255, 255, 0.1);
+}
+
+.user-card img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 10px;
+}
+
+.user-card h3 {
+  font-size: 16px;
+  margin: 5px 0;
+}
+
+.user-card p {
+  font-size: 14px;
+  margin: 2px 0 10px;
+  color: #ccc;
+}
+
+.user-card button {
+  background-color: #b30000;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.user-card button:hover {
+  background-color: #b30000;
+}
+
+#friendsList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.friend-card {
+  background-color: #111;
+  border: 1px solid #333;
+  border-radius: 10px;
+  text-align: center;
+  padding: 15px;
+  color: white;
+  box-shadow: 0 2px 6px rgba(255, 255, 255, 0.1);
+  width: 150px;
+}
+
+.friend-card img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 10px;
+}
+
+.friend-card h3 {
+  font-size: 16px;
+  margin: 5px 0;
+}
+
+.friend-card p {
+  font-size: 14px;
+  margin: 2px 0 10px;
+  color: #ccc;
+}
+
+.friend-card button {
+  background-color: #b30000;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.friend-card button:hover {
+  background-color: #b30000;
+}
+
+.divider {
+  border: none;
+  height: 1px;
+  background-color: #444;  /* subtle gray line */
+  margin: 30px 0;           /* spacing above and below */
+  width: 100%;
+  align-self: center;
+}
 
