@@ -3,7 +3,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Movie List</title>
+  <title>FlickyPicky</title>
+  <link rel="icon" href="/logo.png" type="image/png" />
   <link rel="stylesheet" href="/styles.css">
   <style>
     #moviePage {display: none;}
@@ -35,8 +36,8 @@
 
         <div class="user-popup" id="userPopup">
   <div class="popup-content">
+    <label class="pfp-label">Change Profile Picture</label>
     <form id="pfpForm" enctype="multipart/form-data">
-      <label for="uploadPic">Change Profile Picture</label>
       <input type="file" id="uploadPic" name="pfp" accept="image/*" required />
       <button type="submit">Upload</button>
     </form>
@@ -65,6 +66,9 @@
     <a href="#" onclick="sortMovies('popular')">Popular</a>
   </div>
 </div>
+
+    <button class="allMoviesbtn" onclick="showAllMovies()">All Movies</button>
+    <button class="showRecbtn" onclick="loadRecommendations()">Show Recommendations</button>
   </div>
 
     <div id="moviesSection">
@@ -74,7 +78,11 @@
     <div id="friendsSection" style="display: none;">
       
       <h2>Your Friends</h2>
-      <p>This is where your friends will be listed.</p>
+      <div id="friendsList"></div>
+      <hr class="divider">
+      <h2>Add Friends</h2>
+      <input type="text" id="userSearchInput" placeholder="Search users by name or username..." class="search-bar"/>
+      <div id="userResults"></div>
   <!-- Add friend-related content here -->
 </div>
 
