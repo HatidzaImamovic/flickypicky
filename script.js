@@ -123,9 +123,10 @@ async function login() {
       // Show movie page
       document.getElementById("loginPage").style.display = "none";
       document.getElementById("moviePage").style.display = "block";
+      document.getElementById("friendsSection").style.display = "none";
+      document.getElementById("moviesSection").style.display = "block";
 
       // Load user stats and smart homepage
-      await loadUserStats();
       await loadSmartHomepage();
       await loadGenres();
       
@@ -165,28 +166,6 @@ async function loadSmartHomepage() {
   } catch (error) {
     console.error('Error loading smart homepage:', error);
     loadMovies(); // Fallback to all movies
-  }
-}
-
-// Load user statistics (followers, following counts)
-async function loadUserStats() {
-  if (!currentUsername) return;
-
-  try {
-    const response = await fetch(`/user-stats/${currentUsername}`);
-    const data = await response.json();
-
-    if (data.success) {
-      document.getElementById("followersCount").textContent = data.stats.followers;
-      document.getElementById("followingCount").textContent = data.stats.following;
-      
-      // Update the liked movies count display if you have it in your UI
-      if (document.getElementById("likedMoviesCount")) {
-        document.getElementById("likedMoviesCount").textContent = data.stats.likedMovies;
-      }
-    }
-  } catch (error) {
-    console.error('Error loading user stats:', error);
   }
 }
 
@@ -249,10 +228,6 @@ function logout() {
   // Clear login form
   document.getElementById("loginUsername").value = '';
   document.getElementById("password").value = '';
-  
-  // Reset user stats
-  document.getElementById("followersCount").textContent = '0';
-  document.getElementById("followingCount").textContent = '0';
   
   showNotification("Logged out successfully! 👋", 'info');
 }
@@ -642,28 +617,147 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
-  function showFriends() {
-    // Hide movies section
-    document.getElementById('moviesSection').style.display = 'none';
-    
-    // Show friends section
-    document.getElementById('friendsSection').style.display = 'block';
+async function showFriends() {
+  document.getElementById('moviesSection').style.display = 'none';
+  document.getElementById('friendsSection').style.display = 'block';
+  document.getElementById('searchBar').style.display = 'none';
 
-    document.getElementById('searchBar').placeholder = 'Search users...';
+  const friendsList = document.getElementById('friendsList');
+  friendsList.innerHTML = '';
+
+  try {
+    const response = await fetch(`/friends/${currentUsername}`);
+    const data = await response.json();
+
+    if (data.success && data.friends.length > 0) {
+      data.friends.forEach(friend => {
+        const card = document.createElement('div');
+        card.className = 'friend-card';
+        card.innerHTML = `
+          <img src="${friend.profilePicture}" alt="${friend.username}">
+          <h3>@${friend.username}</h3>
+          <p>${friend.name}</p>
+          <button onclick="unfriend('${friend.username}')">Unfriend</button>
+        `;
+        friendsList.appendChild(card);
+      });
+    } else {
+      friendsList.innerHTML = '<p>You have no friends yet.</p>';
+    }
+  } catch (err) {
+    console.error('Error fetching friends:', err);
+    friendsList.innerHTML = '<p>Error loading friends.</p>';
   }
+}
 
-  function resetToHome() {
-    // Show movies section
-    document.getElementById('moviesSection').style.display = 'block';
+async function unfriend(targetUsername) {
+  const confirmUnfriend = confirm(`Are you sure you want to unfriend @${targetUsername}?`);
+  if (!confirmUnfriend) return;
+
+  try {
+    const response = await fetch('/remove-friend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentUsername, targetUsername })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      showNotification(`You unfriended @${targetUsername}`, 'info');
+      showFriends(); // Refresh the friends list
+    } else {
+      alert(data.message || 'Failed to unfriend.');
+    }
+  } catch (err) {
+    console.error('Error unfriending:', err);
+    alert('An error occurred while unfriending.');
+  }
+}
+
+
+function resetToHome() {
+  // Show movies section
+  document.getElementById('moviesSection').style.display = 'block';
+
+  // Hide friends section
+  document.getElementById('friendsSection').style.display = 'none';
+
+  document.getElementById('searchBar').style.display = 'block';
+
+
+  loadSmartHomepage();
+}
+
+function showAllMovies(){
+  document.getElementById('moviesSection').style.display = 'block';
 
     // Hide friends section
-    document.getElementById('friendsSection').style.display = 'none';
+  document.getElementById('friendsSection').style.display = 'none';
 
-    document.getElementById('searchBar').placeholder = 'Search movies...';
+  document.getElementById('searchBar').style.display = 'block';
 
-    loadMovies();
+  loadMovies();
+}
+
+async function sendFriendRequest(targetUsername) {
+  try {
+    const response = await fetch('/add-friend', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+      currentUsername, 
+      targetUsername 
+      })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      showNotification(`You friended @${targetUsername}`, 'info');
+      showFriends();
+    } else {
+      alert(data.message || 'Failed to add friend.');
+    }
+  } catch (err) {
+    console.error('Error sending friend request:', err);
+    alert('An error occurred while sending friend request.');
   }
+}
 
+
+document.getElementById('userSearchInput').addEventListener('input', async function () {
+  const query = this.value.trim().toLowerCase();
+  const resultsContainer = document.getElementById('userResults');
+  resultsContainer.innerHTML = '';
+
+  if (!query) return;
+
+  try {
+    const response = await fetch(`/search-users?query=${encodeURIComponent(query)}&currentUsername=${encodeURIComponent(currentUsername)}`);
+    const data = await response.json();
+
+    if (data.success && data.users.length > 0) {
+      data.users.forEach(user => {
+        const card = document.createElement('div');
+        card.className = 'user-card';
+
+        card.innerHTML = `
+          <img src="${user.profilePicture}" alt="${user.username}">
+          <h3>@${user.username}</h3>
+          <p>${user.name}</p>
+          <button onclick="sendFriendRequest('${user.username}')">Friend</button>
+        `;
+        resultsContainer.appendChild(card);
+      });
+    } else {
+      resultsContainer.innerHTML = `<p>No users found for "${query}".</p>`;
+    }
+  } catch (err) {
+    console.error('Search failed:', err);
+    resultsContainer.innerHTML = '<p>Error searching users.</p>';
+  }
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   const userBubble = document.getElementById("userBubble");
@@ -683,17 +777,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   setupProfilePictureUpload();
-  
-  // Add debug button for development
-  if (window.location.hostname === 'localhost') {
-    
-    // Add recommendation button
-    const recsButton = document.createElement('button');
-    recsButton.textContent = 'Show Recommendations';
-    recsButton.style.cssText = 'position: fixed; top: 50px; right: 10px; z-index: 9999; background: blue; color: white; padding: 10px; cursor: pointer; border: none; border-radius: 5px;';
-    recsButton.onclick = loadRecommendations;
-    document.body.appendChild(recsButton);
-  }
+
 });
 
 // Close modal when the user clicks on <span> (x)
