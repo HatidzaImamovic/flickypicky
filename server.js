@@ -648,102 +648,6 @@ app.get('/homepage-movies/:username', async (req, res) => {
   }
 });
 
-// Get user's liked movies (for debugging)
-app.get('/user-likes/:username', async (req, res) => {
-  const { username } = req.params;
-  const session = driver.session();
-
-  try {
-    const result = await session.run(`
-      MATCH (u:User {username: $username})-[:LIKES]->(movie:Movie)
-      RETURN movie
-      ORDER BY movie.name
-    `, { username });
-
-    const likedMovies = result.records.map(record => record.get('movie').properties);
-    res.json({ success: true, movies: likedMovies, count: likedMovies.length });
-  } catch (error) {
-    console.error('Error getting liked movies:', error);
-    res.status(500).json({ success: false, message: 'Failed to get liked movies' });
-  } finally {
-    await session.close();
-  }
-});
-
-// Get user's disliked movies (for debugging)
-app.get('/user-dislikes/:username', async (req, res) => {
-  const { username } = req.params;
-  const session = driver.session();
-
-  try {
-    const result = await session.run(`
-      MATCH (u:User {username: $username})-[:DISLIKES]->(movie:Movie)
-      RETURN movie
-      ORDER BY movie.name
-    `, { username });
-
-    const dislikedMovies = result.records.map(record => record.get('movie').properties);
-    res.json({ success: true, movies: dislikedMovies, count: dislikedMovies.length });
-  } catch (error) {
-    console.error('Error getting disliked movies:', error);
-    res.status(500).json({ success: false, message: 'Failed to get disliked movies' });
-  } finally {
-    await session.close();
-  }
-});
-
-// DEBUG ROUTES - Remove these in production
-app.get('/debug/user/:username', async (req, res) => {
-  const { username } = req.params;
-  const session = driver.session();
-
-  try {
-    const result = await session.run(
-      'MATCH (u:User {username: $username}) RETURN u',
-      { username }
-    );
-
-    if (result.records.length === 0) {
-      return res.json({ error: 'User not found', username });
-    }
-
-    const user = result.records[0].get('u').properties;
-    res.json({ 
-      username,
-      user,
-      message: 'User data retrieved successfully'
-    });
-
-  } catch (err) {
-    console.error('Debug user error:', err);
-    res.status(500).json({ error: 'Internal server error', details: err.message });
-  } finally {
-    await session.close();
-  }
-});
-
-app.get('/debug/uploads', (req, res) => {
-  try {
-    const uploadsDir = path.join(__dirname, 'uploads');
-    
-    if (!fs.existsSync(uploadsDir)) {
-      return res.json({ 
-        error: 'uploads directory does not exist',
-        path: uploadsDir
-      });
-    }
-
-    const files = fs.readdirSync(uploadsDir);
-    res.json({ 
-      uploadsDirectory: uploadsDir,
-      files: files,
-      count: files.length
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Cannot read uploads directory', details: err.message });
-  }
-});
-
 // Fix existing users without profile pictures
 app.post('/fix-users', async (req, res) => {
   const session = driver.session();
@@ -770,6 +674,122 @@ app.post('/fix-users', async (req, res) => {
     await session.close();
   }
 });
+
+app.get('/search-users', async (req, res) => {
+  const { query, currentUsername } = req.query;
+  const session = driver.session();
+
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User)
+      WHERE (toLower(u.name) CONTAINS toLower($query)
+         OR toLower(u.username) CONTAINS toLower($query))
+        AND toLower(u.username) <> toLower($currentUsername)
+
+      OPTIONAL MATCH (:User {username: $currentUsername})-[:FRIENDS_WITH]-(u)
+      
+      RETURN u.name AS name,
+             u.username AS username,
+             u.profilePicture AS profilePicture,
+             COUNT((:User {username: $currentUsername})-[:FRIENDS_WITH]-(u)) > 0 AS isFriend
+      `,
+      { query, currentUsername }
+    );
+
+    const users = result.records.map(record => ({
+      name: record.get('name'),
+      username: record.get('username'),
+      profilePicture: record.get('profilePicture') || 'pp.jpg',
+      isFriend: record.get('isFriend')
+    }));
+
+    res.json({ success: true, users });
+  } catch (err) {
+    console.error('User search error:', err);
+    res.status(500).json({ success: false, error: 'Failed to search users' });
+  } finally {
+    await session.close();
+  }
+});
+
+
+app.post('/add-friend', async (req, res) => {
+  const { currentUsername, targetUsername } = req.body;
+
+  if (!currentUsername || !targetUsername || currentUsername === targetUsername) {
+    return res.status(400).json({ success: false, message: 'Invalid friend request.' });
+  }
+
+  const session = driver.session(); // Use the correct driver
+  try {
+    await session.run(
+      `
+      MATCH (a:User {username: $currentUsername}), (b:User {username: $targetUsername})
+      MERGE (a)-[:FRIENDS_WITH]->(b)
+      MERGE (b)-[:FRIENDS_WITH]->(a)
+      `,
+      { currentUsername, targetUsername }
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Neo4j error:', error);
+    res.status(500).json({ success: false, message: 'Database error.' });
+  } finally {
+    await session.close();
+  }
+});
+
+app.get('/friends/:username', async (req, res) => {
+  const { username } = req.params;
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (u:User {username: $username})-[:FRIENDS_WITH]->(f:User)
+      RETURN f.name AS name, f.username AS username, f.profilePicture AS profilePicture
+    `, { username });
+
+    const friends = result.records.map(record => ({
+      name: record.get('name'),
+      username: record.get('username'),
+      profilePicture: record.get('profilePicture') || 'pp.jpg'
+    }));
+
+    res.json({ success: true, friends });
+  } catch (err) {
+    console.error('Error fetching friends:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch friends' });
+  } finally {
+    await session.close();
+  }
+});
+
+app.post('/remove-friend', async (req, res) => {
+  const { currentUsername, targetUsername } = req.body;
+  const session = driver.session();
+
+  if (!currentUsername || !targetUsername || currentUsername === targetUsername) {
+    return res.status(400).json({ success: false, message: 'Invalid unfriend request.' });
+  }
+
+  try {
+    await session.run(`
+      MATCH (a:User {username: $currentUsername})-[r:FRIENDS_WITH]-(b:User {username: $targetUsername})
+      DELETE r
+    `, { currentUsername, targetUsername });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error removing friend:', error);
+    res.status(500).json({ success: false, message: 'Failed to remove friend.' });
+  } finally {
+    await session.close();
+  }
+});
+
+
 
 // Start server
 app.listen(port, () => {
