@@ -676,32 +676,24 @@ app.post('/fix-users', async (req, res) => {
 });
 
 app.get('/search-users', async (req, res) => {
-  const { query, currentUsername } = req.query;
+  const { query } = req.query;
   const session = driver.session();
 
   try {
     const result = await session.run(
       `
       MATCH (u:User)
-      WHERE (toLower(u.name) CONTAINS toLower($query)
-         OR toLower(u.username) CONTAINS toLower($query))
-        AND toLower(u.username) <> toLower($currentUsername)
-
-      OPTIONAL MATCH (:User {username: $currentUsername})-[:FRIENDS_WITH]-(u)
-      
-      RETURN u.name AS name,
-             u.username AS username,
-             u.profilePicture AS profilePicture,
-             COUNT((:User {username: $currentUsername})-[:FRIENDS_WITH]-(u)) > 0 AS isFriend
+      WHERE toLower(u.name) CONTAINS toLower($query)
+         OR toLower(u.username) CONTAINS toLower($query)
+      RETURN u.name AS name, u.username AS username, u.profilePicture AS profilePicture
       `,
-      { query, currentUsername }
+      { query }
     );
 
     const users = result.records.map(record => ({
       name: record.get('name'),
       username: record.get('username'),
-      profilePicture: record.get('profilePicture') || 'pp.jpg',
-      isFriend: record.get('isFriend')
+      profilePicture: record.get('profilePicture') || 'pp.jpg'
     }));
 
     res.json({ success: true, users });
@@ -712,7 +704,6 @@ app.get('/search-users', async (req, res) => {
     await session.close();
   }
 });
-
 
 app.post('/add-friend', async (req, res) => {
   const { currentUsername, targetUsername } = req.body;
@@ -752,19 +743,20 @@ app.get('/friends/:username', async (req, res) => {
     `, { username });
 
     const friends = result.records.map(record => ({
-      name: record.get('name'),
-      username: record.get('username'),
+      name: record.get('name') || '',
+      username: record.get('username') || '',
       profilePicture: record.get('profilePicture') || 'pp.jpg'
     }));
 
     res.json({ success: true, friends });
   } catch (err) {
-    console.error('Error fetching friends:', err);
+    console.error('Error fetching friends:', err.message || err);
     res.status(500).json({ success: false, message: 'Failed to fetch friends' });
   } finally {
     await session.close();
   }
 });
+
 
 app.post('/remove-friend', async (req, res) => {
   const { currentUsername, targetUsername } = req.body;
