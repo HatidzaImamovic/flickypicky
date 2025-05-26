@@ -734,16 +734,7 @@ async function showFriends() {
   }
 }
 
-document.getElementById('closeModal').addEventListener('click', () => {
-  document.getElementById('userModal').style.display = 'none';
-});
 
-window.addEventListener('click', (event) => {
-  const modal = document.getElementById('userModal');
-  if (event.target === modal) {
-    modal.style.display = 'none';
-  }
-});
 
 
 async function unfriend(targetUsername) {
