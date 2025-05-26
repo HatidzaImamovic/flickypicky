@@ -37,10 +37,20 @@
         <div class="user-popup" id="userPopup">
   <div class="popup-content">
     <label class="pfp-label">Change Profile Picture</label>
+    
     <form id="pfpForm" enctype="multipart/form-data">
-      <input type="file" id="uploadPic" name="pfp" accept="image/*" required />
-      <button type="submit">Upload</button>
+      <div class="file-input-container">
+        <div class="file-input-wrapper">
+          <input type="file" id="uploadPic" name="pfp" accept="image/*" required />
+          <label for="uploadPic" class="file-input-label">Choose File</label>
+        </div>
+        <div class="file-status" id="fileStatus">No file chosen</div>
+        <button type="submit" class="upload-btn" id="uploadBtn" disabled>Upload</button>
+      </div>
     </form>
+    
+    <div class="popup-separator"></div>
+    
     <button onclick="showFriends()">Friends</button>
     <button onclick="logout()">Log out</button>
     <button onclick="deleteAccount()">Delete Account</button>
@@ -51,7 +61,7 @@
     </div>
   </div>
 
-  <div class="menu-container">
+  <div id="menu" class="menu-container">
     <div class="dropdown">
       <button class="dropbtn">Genre</button>
       <div class="dropdown-content" id="genreDropdown">
@@ -77,13 +87,17 @@
 
     <div id="friendsSection" style="display: none;">
       
+      <div id="friendsMenu" class="menu-container">
+        <input type="text" id="userSearchInput" placeholder="Search users by name or username..." class="search-bar"/> 
+      </div>
+      <h2>Add Friends</h2>
+      <div id="userResults"></div>
+      <hr class="divider">
       <h2>Your Friends</h2>
       <div id="friendsList"></div>
-      <hr class="divider">
-      <h2>Add Friends</h2>
-      <input type="text" id="userSearchInput" placeholder="Search users by name or username..." class="search-bar"/>
-      <div id="userResults"></div>
-  <!-- Add friend-related content here -->
+      
+      
+      
 </div>
 
   </div>
@@ -123,6 +137,15 @@
     <button onclick="dislike()">
        <img src="dislike.png" alt="Dislike" />
     </button>
+    </div>
+  </div>
+</div>
+
+<div id="userModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <span id="closeModal" class="close">&times;</span>
+    <div id="modalBody">
+      <!-- User info will be inserted here -->
     </div>
   </div>
 </div>
