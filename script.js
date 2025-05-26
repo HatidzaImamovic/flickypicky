@@ -734,7 +734,7 @@ document.getElementById('userSearchInput').addEventListener('input', async funct
   if (!query) return;
 
   try {
-    const response = await fetch(`/search-users?query=${encodeURIComponent(query)}&currentUsername=${encodeURIComponent(currentUsername)}`);
+    const response = await fetch(`/search-users?query=${encodeURIComponent(query)}`);
     const data = await response.json();
 
     if (data.success && data.users.length > 0) {
