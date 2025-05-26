@@ -621,6 +621,7 @@ async function showFriends() {
   document.getElementById('moviesSection').style.display = 'none';
   document.getElementById('friendsSection').style.display = 'block';
   document.getElementById('searchBar').style.display = 'none';
+  document.getElementById('menu').style.display = 'none';
 
   const friendsList = document.getElementById('friendsList');
   friendsList.innerHTML = '';
@@ -631,15 +632,23 @@ async function showFriends() {
 
     if (data.success && data.friends.length > 0) {
       data.friends.forEach(friend => {
+        friend.profilePicture || '/images/default-avatar.png'; // fallback if needed
+
         const card = document.createElement('div');
         card.className = 'friend-card';
+
         card.innerHTML = `
-          <img src="${friend.profilePicture}" alt="${friend.username}">
+          <img src="${friend.profilePicture}" alt="${friend.username}" class="clickable-pfp" data-username="${friend.username}">
           <h3>@${friend.username}</h3>
           <p>${friend.name}</p>
           <button onclick="unfriend('${friend.username}')">Unfriend</button>
-        `;
+          `;
+
         friendsList.appendChild(card);
+
+// Add click event to the profile picture
+        card.querySelector('.clickable-pfp').addEventListener('click', () => openUserModal(friend));
+
       });
     } else {
       friendsList.innerHTML = '<p>You have no friends yet.</p>';
@@ -649,6 +658,32 @@ async function showFriends() {
     friendsList.innerHTML = '<p>Error loading friends.</p>';
   }
 }
+
+function openUserModal(user) {
+  const modal = document.getElementById('userModal');
+  const modalBody = document.getElementById('modalBody');
+
+  modalBody.innerHTML = `
+    <img src="${user.profilePicture}" alt="${user.username}" style="width: 50px; border-radius: 50%;">
+    <h2>@${user.username}</h2>
+    <p>${user.name}</p>
+    <!-- Add more user info here if needed -->
+  `;
+
+  modal.style.display = 'block';
+}
+
+document.getElementById('closeModal').addEventListener('click', () => {
+  document.getElementById('userModal').style.display = 'none';
+});
+
+window.addEventListener('click', (event) => {
+  const modal = document.getElementById('userModal');
+  if (event.target === modal) {
+    modal.style.display = 'none';
+  }
+});
+
 
 async function unfriend(targetUsername) {
   const confirmUnfriend = confirm(`Are you sure you want to unfriend @${targetUsername}?`);
@@ -683,6 +718,8 @@ function resetToHome() {
   document.getElementById('friendsSection').style.display = 'none';
 
   document.getElementById('searchBar').style.display = 'block';
+
+  document.getElementById('menu').style.display = 'block';
 
 
   loadSmartHomepage();
@@ -775,6 +812,19 @@ document.addEventListener("DOMContentLoaded", () => {
       userPopup.style.display = "none";
     }
   });
+
+  document.getElementById('uploadPic').addEventListener('change', function() {
+  const fileStatus = document.getElementById('fileStatus');
+  const uploadBtn = document.getElementById('uploadBtn');
+  
+  if (this.files.length > 0) {
+    fileStatus.textContent = this.files[0].name;
+    uploadBtn.disabled = false;
+  } else {
+    fileStatus.textContent = 'No file chosen';
+    uploadBtn.disabled = true;
+  }
+});
 
   setupProfilePictureUpload();
 
