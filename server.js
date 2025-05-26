@@ -781,43 +781,75 @@ app.post('/remove-friend', async (req, res) => {
   }
 });
 
-// Add this endpoint to your server.js file
-
-// Route: Get user's liked movies
 app.get('/user-liked-movies/:username', async (req, res) => {
   const { username } = req.params;
+  console.log('=== LIKED MOVIES ENDPOINT ===');
+  console.log('Requested username:', username);
+  
   const session = driver.session();
 
   try {
+    // First, let's check if the user exists
+    const userCheckResult = await session.run(`
+      MATCH (u:User {username: $username})
+      RETURN u.username as username, u.name as name
+    `, { username });
+    
+    console.log('User check result:', userCheckResult.records.length > 0 ? 'User found' : 'User not found');
+    
+    if (userCheckResult.records.length === 0) {
+      console.log('User not found in database');
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found',
+        username: username
+      });
+    }
+
+    // Now get the liked movies
     const result = await session.run(`
       MATCH (u:User {username: $username})-[:LIKES]->(m:Movie)
       RETURN m.name as name, m.score as score, m.genre as genre, m.year as year
       ORDER BY m.score DESC
     `, { username });
 
-    const likedMovies = result.records.map(record => ({
-      name: record.get('name'),
-      score: record.get('score'),
-      genre: record.get('genre'),
-      year: typeof record.get('year') === 'object' ? record.get('year').low : record.get('year')
-    }));
+    console.log('Liked movies query returned:', result.records.length, 'records');
 
-    console.log(`Found ${likedMovies.length} liked movies for user ${username}`);
+    const likedMovies = result.records.map(record => {
+      const movieData = {
+        name: record.get('name'),
+        score: record.get('score'),
+        genre: record.get('genre'),
+        year: typeof record.get('year') === 'object' ? record.get('year').low : record.get('year')
+      };
+      console.log('Movie data:', movieData);
+      return movieData;
+    });
+
+    console.log(`Final result: Found ${likedMovies.length} liked movies for user ${username}`);
     
     res.json({ 
       success: true, 
       movies: likedMovies,
-      count: likedMovies.length
+      count: likedMovies.length,
+      username: username
     });
 
   } catch (error) {
-    console.error('Error fetching user liked movies:', error);
+    console.error('=== ERROR IN LIKED MOVIES ENDPOINT ===');
+    console.error('Error details:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
     res.status(500).json({ 
       success: false, 
-      message: 'Error fetching liked movies' 
+      message: 'Error fetching liked movies',
+      error: error.message,
+      username: username
     });
   } finally {
     await session.close();
+    console.log('=== END LIKED MOVIES ENDPOINT ===');
   }
 });
 
