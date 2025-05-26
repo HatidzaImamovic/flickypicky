@@ -144,8 +144,24 @@
 <div id="userModal" class="friendModal" style="display: none;">
   <div class="friendModal-content">
     <span id="closeModal" class="close">&times;</span>
-    <div id="friendModalBody">
-      <!-- User info will be inserted here -->
+    
+    <!-- User Info Section -->
+    <div class="user-info-section">
+      <div class="user-header">
+        <img id="modalProfilePic" src="" alt="Profile Picture" class="modal-profile-pic">
+        <div class="user-details">
+          <h2 id="modalUsername" class="modal-username">@username</h2>
+          <p id="modalName" class="modal-name">Full Name</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Liked Movies Section -->
+    <div class="liked-movies-section">
+      <h3>Liked Movies</h3>
+      <div id="likedMoviesList" class="liked-movies-grid">
+        <!-- Liked movies will be inserted here -->
+      </div>
     </div>
   </div>
 </div>
