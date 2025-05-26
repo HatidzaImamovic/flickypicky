@@ -757,6 +757,42 @@ app.get('/friends/:username', async (req, res) => {
   }
 });
 
+// Route: Get liked movies for a specific user
+app.get('/user-liked-movies/:username', async (req, res) => {
+  const { username } = req.params;
+  const session = driver.session();
+
+  try {
+    console.log(`Fetching liked movies for user: ${username}`);
+
+    const result = await session.run(`
+      MATCH (u:User {username: $username})-[:LIKES]->(m:Movie)
+      RETURN m
+      ORDER BY m.name ASC
+    `, { username });
+
+    const likedMovies = result.records.map(record => record.get('m').properties);
+
+    console.log(`Found ${likedMovies.length} liked movies for user ${username}`);
+
+    res.json({ 
+      success: true, 
+      movies: likedMovies,
+      count: likedMovies.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching user liked movies:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch liked movies',
+      error: error.message 
+    });
+  } finally {
+    await session.close();
+  }
+});
+
 
 app.post('/remove-friend', async (req, res) => {
   const { currentUsername, targetUsername } = req.body;
