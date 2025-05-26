@@ -677,7 +677,7 @@ h1, h2 {
   align-self: center;
 }
 
-.modal {
+.friendModal {
   position: fixed;
   z-index: 1000;
   left: 0;
@@ -688,7 +688,7 @@ h1, h2 {
   background-color: rgba(0, 0, 0, 0.5);
 }
 
-.modal-content {
+.friednModal-content {
   background-color: #1f1f1f;
   margin: 10% auto;
   padding: 20px;
@@ -697,7 +697,7 @@ h1, h2 {
   position: relative;
 }
 
-.modal-content h2 {
+.friendModal-content h2 {
   font-size: 18px;
 }
 
