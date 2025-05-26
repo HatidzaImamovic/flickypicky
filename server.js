@@ -781,7 +781,45 @@ app.post('/remove-friend', async (req, res) => {
   }
 });
 
+// Add this endpoint to your server.js file
 
+// Route: Get user's liked movies
+app.get('/user-liked-movies/:username', async (req, res) => {
+  const { username } = req.params;
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (u:User {username: $username})-[:LIKES]->(m:Movie)
+      RETURN m.name as name, m.score as score, m.genre as genre, m.year as year
+      ORDER BY m.score DESC
+    `, { username });
+
+    const likedMovies = result.records.map(record => ({
+      name: record.get('name'),
+      score: record.get('score'),
+      genre: record.get('genre'),
+      year: typeof record.get('year') === 'object' ? record.get('year').low : record.get('year')
+    }));
+
+    console.log(`Found ${likedMovies.length} liked movies for user ${username}`);
+    
+    res.json({ 
+      success: true, 
+      movies: likedMovies,
+      count: likedMovies.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching user liked movies:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching liked movies' 
+    });
+  } finally {
+    await session.close();
+  }
+});
 
 // Start server
 app.listen(port, () => {
