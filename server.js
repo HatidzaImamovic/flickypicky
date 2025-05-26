@@ -781,39 +781,77 @@ app.post('/remove-friend', async (req, res) => {
   }
 });
 
+// FIXED: Get user's liked movies endpoint
 app.get('/user-liked-movies/:username', async (req, res) => {
-  const { username } = req.params;
-  console.log('=== LIKED MOVIES ENDPOINT ===');
-  console.log('Requested username:', username);
+  let { username } = req.params;
+  
+  console.log('=== USER LIKED MOVIES ENDPOINT START ===');
+  console.log('Raw username from params:', username);
+  console.log('Request URL:', req.url);
+  console.log('Request method:', req.method);
+  
+  // Clean and normalize the username
+  username = decodeURIComponent(username).toLowerCase().trim();
+  console.log('Cleaned username:', username);
+  
+  if (!username) {
+    console.log('ERROR: No username provided');
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Username is required',
+      username: username
+    });
+  }
   
   const session = driver.session();
 
   try {
-    // First, let's check if the user exists
+    // First, let's check if the user exists (case-insensitive search)
+    console.log('Checking if user exists...');
     const userCheckResult = await session.run(`
-      MATCH (u:User {username: $username})
+      MATCH (u:User)
+      WHERE toLower(u.username) = toLower($username)
       RETURN u.username as username, u.name as name
     `, { username });
     
-    console.log('User check result:', userCheckResult.records.length > 0 ? 'User found' : 'User not found');
+    console.log('User check query executed');
+    console.log('User check result count:', userCheckResult.records.length);
     
     if (userCheckResult.records.length === 0) {
-      console.log('User not found in database');
+      console.log('ERROR: User not found in database');
+      
+      // Let's also check what users DO exist for debugging
+      const allUsersResult = await session.run(`
+        MATCH (u:User)
+        RETURN u.username as username
+        LIMIT 10
+      `);
+      
+      const existingUsers = allUsersResult.records.map(r => r.get('username'));
+      console.log('Existing users in database:', existingUsers);
+      
       return res.status(404).json({ 
         success: false, 
         message: 'User not found',
-        username: username
+        username: username,
+        existingUsers: existingUsers.slice(0, 5) // Only send first 5 for debugging
       });
     }
 
-    // Now get the liked movies
+    const actualUsername = userCheckResult.records[0].get('username');
+    console.log('Found user with actual username:', actualUsername);
+
+    // Now get the liked movies using the actual username from database
+    console.log('Fetching liked movies...');
     const result = await session.run(`
-      MATCH (u:User {username: $username})-[:LIKES]->(m:Movie)
+      MATCH (u:User)-[:LIKES]->(m:Movie)
+      WHERE toLower(u.username) = toLower($username)
       RETURN m.name as name, m.score as score, m.genre as genre, m.year as year
       ORDER BY m.score DESC
-    `, { username });
+    `, { username: actualUsername });
 
-    console.log('Liked movies query returned:', result.records.length, 'records');
+    console.log('Liked movies query executed');
+    console.log('Liked movies result count:', result.records.length);
 
     const likedMovies = result.records.map(record => {
       const movieData = {
@@ -822,34 +860,40 @@ app.get('/user-liked-movies/:username', async (req, res) => {
         genre: record.get('genre'),
         year: typeof record.get('year') === 'object' ? record.get('year').low : record.get('year')
       };
-      console.log('Movie data:', movieData);
+      console.log('Processing movie:', movieData.name);
       return movieData;
     });
 
-    console.log(`Final result: Found ${likedMovies.length} liked movies for user ${username}`);
+    console.log(`SUCCESS: Found ${likedMovies.length} liked movies for user ${actualUsername}`);
     
     res.json({ 
       success: true, 
       movies: likedMovies,
       count: likedMovies.length,
-      username: username
+      username: actualUsername
     });
 
   } catch (error) {
-    console.error('=== ERROR IN LIKED MOVIES ENDPOINT ===');
-    console.error('Error details:', error);
+    console.error('=== DATABASE ERROR IN LIKED MOVIES ENDPOINT ===');
+    console.error('Error type:', error.constructor.name);
     console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
     console.error('Error stack:', error.stack);
     
+    // Send detailed error information for debugging
     res.status(500).json({ 
       success: false, 
-      message: 'Error fetching liked movies',
-      error: error.message,
+      message: 'Database error while fetching liked movies',
+      error: {
+        type: error.constructor.name,
+        message: error.message,
+        code: error.code
+      },
       username: username
     });
   } finally {
     await session.close();
-    console.log('=== END LIKED MOVIES ENDPOINT ===');
+    console.log('=== USER LIKED MOVIES ENDPOINT END ===');
   }
 });
 
