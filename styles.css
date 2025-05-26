@@ -790,7 +790,7 @@ h1, h2 {
 
 .liked-movies-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 15px;
   max-height: 300px;
   overflow-y: auto;
@@ -799,8 +799,9 @@ h1, h2 {
 
 .liked-movie-item {
   background-color: #111;
+  min-width: 160px;
   border-radius: 8px;
-  padding: 10px;
+  padding: 12px;
   text-align: center;
   border: 1px solid #333;
   transition: transform 0.2s ease;
@@ -820,15 +821,18 @@ h1, h2 {
 }
 
 .liked-movie-title {
-  font-size: 12px;
+  font-size: 14px;
   color: white;
   margin: 0;
   line-height: 1.2;
-  height: 30px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
+  height: auto;
+  overflow: visible;
+  display: block;
+  -webkit-line-clamp: unset;
   -webkit-box-orient: vertical;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .liked-movie-score {
