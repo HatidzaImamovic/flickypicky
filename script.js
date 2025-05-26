@@ -125,6 +125,8 @@ async function login() {
       document.getElementById("moviePage").style.display = "block";
       document.getElementById("friendsSection").style.display = "none";
       document.getElementById("moviesSection").style.display = "block";
+      document.getElementById("searchBar").style.display = "block";
+      document.getElementById("menu").style.display = "block";
 
       // Load user stats and smart homepage
       await loadSmartHomepage();
@@ -632,14 +634,34 @@ async function openUserModal(user) {
   modal.style.display = 'block';
 }
 
-// Function to load user's liked movies
 async function loadUserLikedMovies(username) {
   const likedMoviesList = document.getElementById('likedMoviesList');
   likedMoviesList.innerHTML = '<div style="text-align: center; color: #888;">Loading liked movies...</div>';
   
   try {
-    const response = await fetch(`/user-liked-movies/${username}`);
+    console.log('=== FRONTEND: Loading liked movies ===');
+    console.log('Username:', username);
+    console.log('Current user:', currentUsername);
+    
+    // Ensure username is properly encoded for URL
+    const encodedUsername = encodeURIComponent(username.toLowerCase().trim());
+    const url = `/user-liked-movies/${encodedUsername}`;
+    
+    console.log('Making request to:', url);
+    
+    const response = await fetch(url);
+    
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+    
     const data = await response.json();
+    console.log('Response data:', data);
     
     if (data.success && data.movies && data.movies.length > 0) {
       likedMoviesList.innerHTML = '';
@@ -662,13 +684,46 @@ async function loadUserLikedMovies(username) {
         
         likedMoviesList.appendChild(movieDiv);
       }
+      
+      console.log(`Successfully loaded ${data.movies.length} liked movies`);
     } else {
       likedMoviesList.innerHTML = '<div class="no-movies-message">This user hasn\'t liked any movies yet.</div>';
+      console.log('No liked movies found for user');
     }
   } catch (error) {
+    console.error('=== FRONTEND ERROR ===');
     console.error('Error loading user liked movies:', error);
-    likedMoviesList.innerHTML = '<div class="no-movies-message">Error loading liked movies.</div>';
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    likedMoviesList.innerHTML = `
+      <div class="no-movies-message">
+        Error loading liked movies: ${error.message}
+        <br><small>Check console for details</small>
+      </div>
+    `;
   }
+}
+
+// Updated openUserModal function with better error handling
+async function openUserModal(user) {
+  const modal = document.getElementById('userModal');
+  
+  console.log('=== OPENING USER MODAL ===');
+  console.log('User object:', user);
+  console.log('User username:', user.username);
+  
+  // Set user info
+  document.getElementById('modalProfilePic').src = user.profilePicture || 'pp.jpg';
+  document.getElementById('modalUsername').textContent = `@${user.username}`;
+  document.getElementById('modalName').textContent = user.name;
+  
+  // Load and display liked movies
+  await loadUserLikedMovies(user.username);
+  
+  modal.style.display = 'block';
+  
+  console.log('=== USER MODAL OPENED ===');
 }
 
 // Updated event listeners
@@ -695,6 +750,7 @@ async function showFriends() {
   document.getElementById('moviesSection').style.display = 'none';
   document.getElementById('friendsSection').style.display = 'block';
   document.getElementById('searchBar').style.display = 'none';
+  document.getElementById('menu').style.display = 'none';
 
   const friendsList = document.getElementById('friendsList');
   friendsList.innerHTML = '';
