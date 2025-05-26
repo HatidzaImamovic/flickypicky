@@ -617,6 +617,80 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
+// Updated openUserModal function with liked movies
+async function openUserModal(user) {
+  const modal = document.getElementById('userModal');
+  
+  // Set user info
+  document.getElementById('modalProfilePic').src = user.profilePicture || 'pp.jpg';
+  document.getElementById('modalUsername').textContent = `@${user.username}`;
+  document.getElementById('modalName').textContent = user.name;
+  
+  // Load and display liked movies
+  await loadUserLikedMovies(user.username);
+  
+  modal.style.display = 'block';
+}
+
+// Function to load user's liked movies
+async function loadUserLikedMovies(username) {
+  const likedMoviesList = document.getElementById('likedMoviesList');
+  likedMoviesList.innerHTML = '<div style="text-align: center; color: #888;">Loading liked movies...</div>';
+  
+  try {
+    const response = await fetch(`/user-liked-movies/${username}`);
+    const data = await response.json();
+    
+    if (data.success && data.movies && data.movies.length > 0) {
+      likedMoviesList.innerHTML = '';
+      
+      for (const movie of data.movies) {
+        const movieDiv = document.createElement('div');
+        movieDiv.className = 'liked-movie-item';
+        
+        // Get poster from TMDB (reuse existing function)
+        const posterUrl = await getTMDBPoster(movie.name);
+        
+        movieDiv.innerHTML = `
+          ${posterUrl ? 
+            `<img src="${posterUrl}" alt="${movie.name}" class="liked-movie-poster">` : 
+            `<div class="liked-movie-poster" style="background-color: #333; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px;">No Poster</div>`
+          }
+          <p class="liked-movie-title">${movie.name}</p>
+          <div class="liked-movie-score">⭐ ${movie.score}/10</div>
+        `;
+        
+        likedMoviesList.appendChild(movieDiv);
+      }
+    } else {
+      likedMoviesList.innerHTML = '<div class="no-movies-message">This user hasn\'t liked any movies yet.</div>';
+    }
+  } catch (error) {
+    console.error('Error loading user liked movies:', error);
+    likedMoviesList.innerHTML = '<div class="no-movies-message">Error loading liked movies.</div>';
+  }
+}
+
+// Updated event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  // Close modal event listener
+  const closeModalBtn = document.getElementById('closeModal');
+  if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', () => {
+      document.getElementById('userModal').style.display = 'none';
+    });
+  }
+
+  // Click outside modal to close
+  window.addEventListener('click', (event) => {
+    const modal = document.getElementById('userModal');
+    if (event.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
+});
+
+// Updated showFriends function (same as before but included for completeness)
 async function showFriends() {
   document.getElementById('moviesSection').style.display = 'none';
   document.getElementById('friendsSection').style.display = 'block';
@@ -631,23 +705,25 @@ async function showFriends() {
 
     if (data.success && data.friends.length > 0) {
       data.friends.forEach(friend => {
-        friend.profilePicture || '/images/default-avatar.png'; // fallback if needed
+        const profilePicture = friend.profilePicture || 'pp.jpg';
 
-const card = document.createElement('div');
-card.className = 'friend-card';
+        const card = document.createElement('div');
+        card.className = 'friend-card';
 
-card.innerHTML = `
-  <img src="${friend.profilePicture}" alt="${friend.username}" class="clickable-pfp" data-username="${friend.username}">
-  <h3>@${friend.username}</h3>
-  <p>${friend.name}</p>
-  <button onclick="unfriend('${friend.username}')">Unfriend</button>
-`;
+        card.innerHTML = `
+          <img src="${profilePicture}" alt="${friend.username}" class="clickable-pfp">
+          <h3>@${friend.username}</h3>
+          <p>${friend.name}</p>
+          <button onclick="unfriend('${friend.username}')">Unfriend</button>
+        `;
 
-friendsList.appendChild(card);
+        friendsList.appendChild(card);
 
-// Add click event to the profile picture
-card.querySelector('.clickable-pfp').addEventListener('click', () => openUserModal(friend));
-
+        // Add click event to the profile picture after adding to DOM
+        const profilePicElement = card.querySelector('.clickable-pfp');
+        profilePicElement.addEventListener('click', () => {
+          openUserModal(friend);
+        });
       });
     } else {
       friendsList.innerHTML = '<p>You have no friends yet.</p>';
@@ -656,20 +732,6 @@ card.querySelector('.clickable-pfp').addEventListener('click', () => openUserMod
     console.error('Error fetching friends:', err);
     friendsList.innerHTML = '<p>Error loading friends.</p>';
   }
-}
-
-function openUserModal(user) {
-  const modal = document.getElementById('userModal');
-  const modalBody = document.getElementById('modalBody');
-
-  modalBody.innerHTML = `
-    <img src="${user.profilePicture}" alt="${user.username}" style="width: 50px; border-radius: 50%;">
-    <h2>@${user.username}</h2>
-    <p>${user.name}</p>
-    <!-- Add more user info here if needed -->
-  `;
-
-  modal.style.display = 'block';
 }
 
 document.getElementById('closeModal').addEventListener('click', () => {
