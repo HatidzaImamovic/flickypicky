@@ -1,4 +1,4 @@
-html, body {
+.pageWrap {html, body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -373,15 +373,17 @@ h1, h2 {
   background-color: #000; /* BLACK background */
   border-radius: 10px;
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); /* subtle white glow */
-  padding: 15px;
+  padding: 20px;
   z-index: 999;
-  width: 220px;
+  width: 250px;
+  border: 1px solid #333;
 }
 
 .user-popup .popup-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 15px;
+  align-items: center;
 }
 
 .user-popup .popup-content button {
@@ -394,7 +396,7 @@ h1, h2 {
 .user-popup button {
   padding: 8px 12px;
   border: none;
-  background-color: #d9534f;
+  background-color: #b30000;
   color: white;
   cursor: pointer;
   border-radius: 5px;
@@ -402,10 +404,11 @@ h1, h2 {
 }
 
 .pfp-label {
-  font-size: 14px;
+  font-size: 16px;
   color: white;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
   font-weight: bold;
+  text-align: center;
 }
 
 .pfp-form {
@@ -430,6 +433,91 @@ h1, h2 {
   white-space: nowrap;
 }
 
+.file-input-wrapper {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.file-input-wrapper input[type="file"] {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.file-input-label {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #333;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+  text-align: center;
+  min-width: 100px;
+}
+
+.file-input-label:hover {
+  background-color: #555;
+}
+
+/* File status text */
+.file-status {
+  font-size: 12px;
+  color: #ccc;
+  text-align: center;
+  min-height: 18px;
+  margin-top: 5px;
+}
+
+.upload-btn {
+  padding: 10px 20px;
+  border: none;
+  background-color: #d9534f;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: background-color 0.3s;
+  margin-top: 10px;
+}
+
+.upload-btn:hover {
+  background-color: #c9302c;
+}
+
+.upload-btn:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+/* Other popup buttons */
+.user-popup .popup-content button:not(.upload-btn) {
+  width: 120px;
+  padding: 10px 16px;
+  border: none;
+  background-color: #d9534f;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.user-popup .popup-content button:not(.upload-btn):hover {
+  background-color: #c9302c;
+}
+
+/* Separator line */
+.popup-separator {
+  width: 100%;
+  height: 1px;
+  background-color: #444;
+  margin: 10px 0;
+}
 
 .search-bar {
   padding: 6px 12px;
@@ -551,6 +639,7 @@ h1, h2 {
   border-radius: 50%;
   object-fit: cover;
   margin-bottom: 10px;
+  cursor: pointer;
 }
 
 .friend-card h3 {
@@ -586,5 +675,39 @@ h1, h2 {
   margin: 30px 0;           /* spacing above and below */
   width: 100%;
   align-self: center;
+}
+
+.modal {
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  background-color: #1f1f1f;
+  margin: 10% auto;
+  padding: 20px;
+  width: 300px;
+  border-radius: 10px;
+  position: relative;
+}
+
+.modal-content h2 {
+  font-size: 18px;
+}
+
+.close {
+  color: #ae2121;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  position: absolute;
+  top: 10px;
+  right: 15px;
 }
 
