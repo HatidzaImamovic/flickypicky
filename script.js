@@ -621,7 +621,6 @@ async function showFriends() {
   document.getElementById('moviesSection').style.display = 'none';
   document.getElementById('friendsSection').style.display = 'block';
   document.getElementById('searchBar').style.display = 'none';
-  document.getElementById('menu').style.display = 'none';
 
   const friendsList = document.getElementById('friendsList');
   friendsList.innerHTML = '';
@@ -634,20 +633,20 @@ async function showFriends() {
       data.friends.forEach(friend => {
         friend.profilePicture || '/images/default-avatar.png'; // fallback if needed
 
-        const card = document.createElement('div');
-        card.className = 'friend-card';
+const card = document.createElement('div');
+card.className = 'friend-card';
 
-        card.innerHTML = `
-          <img src="${friend.profilePicture}" alt="${friend.username}" class="clickable-pfp" data-username="${friend.username}">
-          <h3>@${friend.username}</h3>
-          <p>${friend.name}</p>
-          <button onclick="unfriend('${friend.username}')">Unfriend</button>
-          `;
+card.innerHTML = `
+  <img src="${friend.profilePicture}" alt="${friend.username}" class="clickable-pfp" data-username="${friend.username}">
+  <h3>@${friend.username}</h3>
+  <p>${friend.name}</p>
+  <button onclick="unfriend('${friend.username}')">Unfriend</button>
+`;
 
-        friendsList.appendChild(card);
+friendsList.appendChild(card);
 
 // Add click event to the profile picture
-        card.querySelector('.clickable-pfp').addEventListener('click', () => openUserModal(friend));
+card.querySelector('.clickable-pfp').addEventListener('click', () => openUserModal(friend));
 
       });
     } else {
@@ -829,108 +828,6 @@ document.addEventListener("DOMContentLoaded", () => {
   setupProfilePictureUpload();
 
 });
-
-// Add these functions to script.js
-
-// Fetch liked movies for a specific user
-async function fetchUserLikedMovies(username) {
-  try {
-    console.log(`Fetching liked movies for user: ${username}`);
-    
-    const response = await fetch(`/user-liked-movies/${username}`);
-    const data = await response.json();
-    
-    if (data.success) {
-      console.log(`Found ${data.count} liked movies for ${username}`);
-      return data.movies;
-    } else {
-      console.error('Failed to fetch liked movies:', data.message);
-      return [];
-    }
-  } catch (error) {
-    console.error('Error fetching user liked movies:', error);
-    return [];
-  }
-}
-
-// Updated openUserModal function to include liked movies
-async function openUserModal(user) {
-  const modal = document.getElementById('userModal');
-  const modalBody = document.getElementById('friendModalBody');
-
-  // Show loading state
-  modalBody.innerHTML = `
-    <div style="text-align: center; padding: 20px;">
-      <img src="${user.profilePicture}" alt="${user.username}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
-      <h2>@${user.username}</h2>
-      <p>${user.name}</p>
-      <p style="color: #ccc;">Loading liked movies...</p>
-    </div>
-  `;
-
-  modal.style.display = 'block';
-
-  // Fetch liked movies
-  const likedMovies = await fetchUserLikedMovies(user.username);
-
-  // Generate liked movies HTML
-  let likedMoviesHTML = '';
-  if (likedMovies.length > 0) {
-    likedMoviesHTML = `
-      <div class="user-liked-movies">
-        <h3 style="color: crimson; margin-top: 20px; margin-bottom: 15px;">
-          Liked Movies (${likedMovies.length})
-        </h3>
-        <div class="liked-movies-grid">
-    `;
-
-    // Generate movie cards (limit to first 8 for modal space)
-    const displayMovies = likedMovies.slice(0, 8);
-    for (const movie of displayMovies) {
-      const posterUrl = await getTMDBPoster(movie.name);
-      
-      likedMoviesHTML += `
-        <div class="modal-movie-card" onclick='showMovieDetails(${JSON.stringify(movie).replace(/'/g, "&apos;")})'>
-          ${posterUrl ? 
-            `<img src="${posterUrl}" alt="${movie.name}" class="modal-movie-poster">` : 
-            '<div class="no-poster">No Poster</div>'
-          }
-          <div class="modal-movie-title">${movie.name}</div>
-          <div class="modal-movie-score">⭐ ${movie.score}/10</div>
-        </div>
-      `;
-    }
-    
-    likedMoviesHTML += `
-        </div>
-        ${likedMovies.length > 8 ? 
-          `<p style="text-align: center; color: #ccc; font-size: 14px; margin-top: 10px;">
-            Showing 8 of ${likedMovies.length} liked movies
-          </p>` : ''
-        }
-      </div>
-    `;
-  } else {
-    likedMoviesHTML = `
-      <div class="user-liked-movies">
-        <h3 style="color: crimson; margin-top: 20px;">Liked Movies</h3>
-        <p style="color: #ccc; text-align: center; font-style: italic;">
-          ${user.username} hasn't liked any movies yet.
-        </p>
-      </div>
-    `;
-  }
-
-  // Update modal content with user info and liked movies
-  modalBody.innerHTML = `
-    <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #444;">
-      <img src="${user.profilePicture}" alt="${user.username}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
-      <h2>@${user.username}</h2>
-      <p>${user.name}</p>
-    </div>
-    ${likedMoviesHTML}
-  `;
-}
 
 // Close modal when the user clicks on <span> (x)
 document.querySelector(".close").onclick = function () {
