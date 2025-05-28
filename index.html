@@ -1,6 +1,6 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>FlickyPicky</title>
@@ -13,158 +13,144 @@
 </head>
 <body>
   <div id="moviePage" style="display:none;">
- <div id="mainLayout">
-  <div class="navbar">
-    <div class="navbar-container">
-      <div class="logoPicture">
-        <img id="logoPic" src="logo.png" alt="logo" />
-      </div>
-      <div class="logo-container"><h1 class="logo" onclick="resetToHome()">Flickypicky</h1>
-      </div>
+    <div id="mainLayout">
+      <div class="navbar">
+        <div class="navbar-container">
+          <div class="logoPicture">
+          <img id="logoPic" src="logo.png" alt="logo" />
+          </div>
+          <div class="logo-container"><h1 class="logo" onclick="resetToHome()">Flickypicky</h1>
+          </div>
       
-      
-     
-      <input type="text" id="searchBar" placeholder="Search movies..." class="search-bar">
-      <div id="searchResults"></div>
+          <input type="text" id="searchBar" placeholder="Search movies..." class="search-bar">
+          <div id="searchResults"></div>
     
+          <div class="user-section">
+            <span class="greeting">Hello, <span id="greetingUsername">User</span></span>
+            <div class="user-bubble" id="userBubble">
+              <img id="profilePic" alt="User" />
+            </div>
 
-      <div class="user-section">
-        <span class="greeting">Hello, <span id="greetingUsername">User</span></span>
-        <div class="user-bubble" id="userBubble">
-          <img id="profilePic" alt="User" />
+            <div class="user-popup" id="userPopup">
+              <div class="popup-content">
+              <label class="pfp-label">Change Profile Picture</label>
+                <form id="pfpForm" enctype="multipart/form-data">
+                  <div class="file-input-container">
+                    <div class="file-input-wrapper">
+                      <input type="file" id="uploadPic" name="pfp" accept="image/*" required />
+                      <label for="uploadPic" class="file-input-label">Choose File</label>
+                    </div>
+                    <div class="file-status" id="fileStatus">No file chosen</div>
+                    <button type="submit" class="upload-btn" id="uploadBtn" disabled>Upload</button>
+                  </div>
+                </form>
+    
+                <div class="popup-separator"></div>
+    
+                <button onclick="showFriends()">Friends</button>
+                <button onclick="logout()">Log out</button>
+                <button onclick="deleteAccount()">Delete Account</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="menu" class="menu-container">
+        <div class="dropdown">
+          <button class="dropbtn">Genre</button>
+          <div class="dropdown-content" id="genreDropdown">
+          </div>
         </div>
 
-        <div class="user-popup" id="userPopup">
-  <div class="popup-content">
-    <label class="pfp-label">Change Profile Picture</label>
-    
-    <form id="pfpForm" enctype="multipart/form-data">
-      <div class="file-input-container">
-        <div class="file-input-wrapper">
-          <input type="file" id="uploadPic" name="pfp" accept="image/*" required />
-          <label for="uploadPic" class="file-input-label">Choose File</label>
+        <div class="dropdown">
+          <button class="dropbtn">Sort by</button>
+          <div class="dropdown-content">
+            <a href="#" onclick="sortMovies('newest')">Newest</a>
+            <a href="#" onclick="sortMovies('oldest')">Oldest</a>
+            <a href="#" onclick="sortMovies('popular')">Popular</a>
+          </div>
         </div>
-        <div class="file-status" id="fileStatus">No file chosen</div>
-        <button type="submit" class="upload-btn" id="uploadBtn" disabled>Upload</button>
+
+        <button class="allMoviesbtn" onclick="showAllMovies()">All Movies</button>
+        <button class="showRecbtn" onclick="loadRecommendations()">Show Recommendations</button>
       </div>
-    </form>
+
+      <div id="moviesSection">
+        <div id="movies"></div> 
+      </div>
+
+      <div id="friendsSection" style="display: none;">
+        <div id="friendsMenu" class="menu-container">
+          <input type="text" id="userSearchInput" placeholder="Search users by name or username..." class="search-bar"/> 
+        </div>
+        <h2>Add Friends</h2>
+        <div id="userResults"></div>
+        <hr class="divider">
+        <h2>Your Friends</h2>
+        <div id="friendsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pageWrap">
+    <div id="loginPage">
+      <h1>Welcome to FlickyPicky!</h1>
+      <h2>Log In</h2>
+      <input type="text" id="loginUsername" placeholder="Username" /><br/>
+      <input type="password" id="password" placeholder="Password" /><br/>
+      <button onclick="login()">Login</button><br/>
+      <span class="link" onclick="showSignUp()">Don't have an account? Sign up</span>
+    </div>
+
+    <div id="signupPage" style="display: none;">
+      <h2>Sign Up</h2>
+      <input type="text" id="name" placeholder="Name" /><br/>
+      <input type="text" id="signupUsername" placeholder="Username" /><br/>
+      <input type="email" id="email" placeholder="Email" /><br/>
+      <input type="password" id="signupPassword" placeholder="Password" /><br/>
+      <input type="password" id="confirmPassword" placeholder="Confirm Password" /><br/>
+      <button onclick="signup()">Sign Up</button><br/>
+      <span class="link" onclick="showLogIn()">Already have an account? Log in</span>
+    </div>
+  </div>  
+
+  <div id="movieModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <div id="modalDetails"></div>
+        <div class="modal-images">
+          <button onclick="likeMovie('${movie.name}')">
+            <img src="like.png" alt="Like" />
+          </button>
+          <button onclick="dislike()">
+            <img src="dislike.png" alt="Dislike" />
+          </button>
+        </div>
+    </div>
+  </div>
+
+  <div id="userModal" class="friendModal" style="display: none;">
+    <div class="friendModal-content">
+      <span id="closeModal" class="close">&times;</span>
     
-    <div class="popup-separator"></div>
+      <div class="user-info-section">
+        <div class="user-header">
+          <img id="modalProfilePic" src="" alt="Profile Picture" class="modal-profile-pic">
+          <div class="user-details">
+            <h2 id="modalUsername" class="modal-username">@username</h2>
+            <p id="modalName" class="modal-name">Full Name</p>
+          </div>
+        </div>
+      </div>
     
-    <button onclick="showFriends()">Friends</button>
-    <button onclick="logout()">Log out</button>
-    <button onclick="deleteAccount()">Delete Account</button>
-  </div>
-</div>
-
-      </div>
-    </div>
-  </div>
-
-  <div id="menu" class="menu-container">
-    <div class="dropdown">
-      <button class="dropbtn">Genre</button>
-      <div class="dropdown-content" id="genreDropdown">
-      </div>
-    </div>
-
-    <div class="dropdown">
-  <button class="dropbtn">Sort by</button>
-  <div class="dropdown-content">
-    <a href="#" onclick="sortMovies('newest')">Newest</a>
-    <a href="#" onclick="sortMovies('oldest')">Oldest</a>
-    <a href="#" onclick="sortMovies('popular')">Popular</a>
-  </div>
-</div>
-
-    <button class="allMoviesbtn" onclick="showAllMovies()">All Movies</button>
-    <button class="showRecbtn" onclick="loadRecommendations()">Show Recommendations</button>
-  </div>
-
-    <div id="moviesSection">
-      <div id="movies"></div> <!-- Movies get inserted here -->
-    </div>
-
-    <div id="friendsSection" style="display: none;">
-      
-      <div id="friendsMenu" class="menu-container">
-        <input type="text" id="userSearchInput" placeholder="Search users by name or username..." class="search-bar"/> 
-      </div>
-      <h2>Add Friends</h2>
-      <div id="userResults"></div>
-      <hr class="divider">
-      <h2>Your Friends</h2>
-      <div id="friendsList"></div>
-      
-      
-      
-</div>
-
-  </div>
-</div>
-
-<div class="pageWrap">
-  <div id="loginPage">
-    <h1>Welcome to FlickyPicky!</h1>
-    <h2>Log In</h2>
-    <input type="text" id="loginUsername" placeholder="Username" /><br/>
-    <input type="password" id="password" placeholder="Password" /><br/>
-    <button onclick="login()">Login</button><br/>
-    <span class="link" onclick="showSignUp()">Don't have an account? Sign up</span>
-  </div>
-
-  <div id="signupPage" style="display: none;">
-    <h2>Sign Up</h2>
-    <input type="text" id="name" placeholder="Name" /><br/>
-    <input type="text" id="signupUsername" placeholder="Username" /><br/>
-    <input type="email" id="email" placeholder="Email" /><br/>
-    <input type="password" id="signupPassword" placeholder="Password" /><br/>
-    <input type="password" id="confirmPassword" placeholder="Confirm Password" /><br/>
-    <button onclick="signup()">Sign Up</button><br/>
-    <span class="link" onclick="showLogIn()">Already have an account? Log in</span>
-  </div>
-</div>  
-
-  <!-- Modal structure -->
-<div id="movieModal" class="modal">
-  <div class="modal-content">
-    <span class="close">&times;</span>
-    <div id="modalDetails"></div>
-    <div class="modal-images">
-    <button onclick="likeMovie('${movie.name}')">
-       <img src="like.png" alt="Like" />
-    </button>
-    <button onclick="dislike()">
-       <img src="dislike.png" alt="Dislike" />
-    </button>
-    </div>
-  </div>
-</div>
-
-<div id="userModal" class="friendModal" style="display: none;">
-  <div class="friendModal-content">
-    <span id="closeModal" class="close">&times;</span>
-    
-    <!-- User Info Section -->
-    <div class="user-info-section">
-      <div class="user-header">
-        <img id="modalProfilePic" src="" alt="Profile Picture" class="modal-profile-pic">
-        <div class="user-details">
-          <h2 id="modalUsername" class="modal-username">@username</h2>
-          <p id="modalName" class="modal-name">Full Name</p>
+      <div class="liked-movies-section">
+        <h3>Liked Movies</h3>
+        <div id="likedMoviesList" class="liked-movies-grid">
         </div>
       </div>
     </div>
-    
-    <!-- Liked Movies Section -->
-    <div class="liked-movies-section">
-      <h3>Liked Movies</h3>
-      <div id="likedMoviesList" class="liked-movies-grid">
-        <!-- Liked movies will be inserted here -->
-      </div>
-    </div>
   </div>
-</div>
 
   <script src="script.js"></script>
 </body>
