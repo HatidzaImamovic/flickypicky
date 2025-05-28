@@ -5,10 +5,9 @@ html, body {
   width: 100%;
   background-color: #000;
   color: #fff;
-  overflow: hidden; /* Keep fullscreen feel */
+  overflow: hidden;
   font-family: 'Times New Roman', serif;
 }
-
 
 h1, h2 {
   color: crimson;
@@ -23,7 +22,6 @@ h1, h2 {
   height: 100vh;
   background-color: #111;
 }
-
 
 #loginPage,
 #signupPage {
@@ -86,21 +84,18 @@ h1, h2 {
   text-decoration: underline;
 }
 
-
 #mainLayout {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Use full screen */
+  height: 100vh; 
   width: 100%;
 }
-
 
 #moviesSection {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
 }
-
 
 #movies {
   display: grid;
@@ -111,8 +106,6 @@ h1, h2 {
   padding: 20px;
   box-sizing: border-box;
 }
-
-
 
 .movie-card {
   display: flex;
@@ -125,16 +118,16 @@ h1, h2 {
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(255, 255, 255, 0.1);
   text-align: center;
-  padding: 20px 15px; /* Added padding inside the card */
-  min-height: 380px;   /* Slightly taller if needed */
+  padding: 20px 15px; 
+  min-height: 380px;   
 }
 
 .movie-card img {
-  width: 90%;           /* Slight padding around the image */
-  height: 240px;        /* Slightly shorter to lift it up */
+  width: 90%;          
+  height: 240px;       
   object-fit: cover;
   border-radius: 6px;
-  margin-bottom: 15px;  /* Space between poster and title */
+  margin-bottom: 15px; 
 }
 
 .movie-card h3 {
@@ -143,7 +136,6 @@ h1, h2 {
   line-height: 1.2;
 }
 
-/* Modal background */
 .modal {
   display: none; 
   position: fixed; 
@@ -156,7 +148,6 @@ h1, h2 {
   background-color: rgba(0, 0, 0, 0.5); 
 }
 
-/* Modal content box */
 .modal-content {
   background-color: #1f1f1f;
   margin: 10% auto; 
@@ -174,11 +165,11 @@ h1, h2 {
   right: 40px;
   display: flex;
   flex-direction: column;
-  gap: 20px; /* spacing between images */
+  gap: 20px; 
 }
 
 .modal-images img {
-  width: 50px; /* or whatever size you prefer */
+  width: 50px; 
   height: auto;
   cursor: pointer;
   background-color: #1f1f1f;
@@ -199,7 +190,6 @@ h1, h2 {
   outline: none;
 }
 
-
 .modal-info {
   flex: 1;
   min-width: 200px;
@@ -211,7 +201,6 @@ h1, h2 {
   margin-top: -20px;
 }
 
-/* Close button */
 .close {
   color: #ae2121;
   position: absolute;
@@ -228,7 +217,6 @@ h1, h2 {
   flex-shrink: 0;
 }
 
-
 .navbar-container{
   display: flex;
   align-items: center;
@@ -240,7 +228,7 @@ h1, h2 {
 .logo-container{
   display: flex;
   align-items: left;
-  gap: 10px; /* spacing between image and text */
+  gap: 10px; 
   flex: 1;
 }
 
@@ -251,23 +239,20 @@ h1, h2 {
   cursor: pointer;
 }
 
-/* Style for the logo container */
 .logoPicture {
-  height: 100%;         /* Match the navbar height */
-  display: flex;        /* Flexbox to center image */
-  align-items: center;  /* Vertically center the image */
-  padding: -5px;      /* Optional horizontal padding */
+  height: 100%;       
+  display: flex;        
+  align-items: center;  
+  padding: -5px;      
 }
 
-/* Style for the logo image */
 #logoPic {
-  height: 100px;         /* Keep it proportional to the navbar */
-  width: auto;         /* Maintain aspect ratio */
-  max-height: 100%;    /* Never overflow the navbar */
+  height: 100px;   
+  width: auto;       
+  max-height: 100%;    
   display: block;
   border: none;
 }
-
 
 .menu-container {
   display: flex;
@@ -276,7 +261,6 @@ h1, h2 {
   gap: 10px;
   padding: 10px 20px;
   background-color: #111;
-  /*border-bottom: 2px solid #444;*/
 }
 
 .dropdown {
@@ -370,9 +354,9 @@ h1, h2 {
   position: absolute;
   top: 60px;
   right: 20px;
-  background-color: #000; /* BLACK background */
+  background-color: #000; 
   border-radius: 10px;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); /* subtle white glow */
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); 
   padding: 20px;
   z-index: 999;
   width: 250px;
@@ -464,7 +448,6 @@ h1, h2 {
   background-color: #555;
 }
 
-/* File status text */
 .file-status {
   font-size: 12px;
   color: #ccc;
@@ -494,7 +477,6 @@ h1, h2 {
   cursor: not-allowed;
 }
 
-/* Other popup buttons */
 .user-popup .popup-content button:not(.upload-btn) {
   width: 120px;
   padding: 10px 16px;
@@ -511,7 +493,6 @@ h1, h2 {
   background-color: #c9302c;
 }
 
-/* Separator line */
 .popup-separator {
   width: 100%;
   height: 1px;
@@ -523,7 +504,7 @@ h1, h2 {
   padding: 6px 12px;
   font-size: 16px;
   margin-left: 20px;
-  margin-right: 40px; /* Increased spacing from user section */
+  margin-right: 40px; 
   width: 300px;
   border-radius: 8px;
   border: none;
@@ -671,8 +652,8 @@ h1, h2 {
 .divider {
   border: none;
   height: 1px;
-  background-color: #444;  /* subtle gray line */
-  margin: 30px 0;           /* spacing above and below */
+  background-color: #444; 
+  margin: 30px 0;           
   width: 100%;
   align-self: center;
 }
@@ -765,18 +746,19 @@ h1, h2 {
 .modal-username {
   font-size: 28px;
   color: crimson;
-  margin: 0 0 5px 0;
   font-weight: bold;
+  margin: 0 0 2px 0;
+  text-align: left; 
 }
 
 .modal-name {
-  font-size: 18px;
+  font-size: 42px;       
   color: #ccc;
-  margin: 0;
-  font-weight: normal;
+  padding-left: 10px;
+  margin: -4px 0 0 0;   
+  font-weight: 500;    
 }
 
-/* Liked Movies Section */
 .liked-movies-section {
   margin-top: 20px;
 }
@@ -801,10 +783,13 @@ h1, h2 {
   background-color: #111;
   min-width: 160px;
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   text-align: center;
   border: 1px solid #333;
   transition: transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .liked-movie-item:hover {
@@ -814,10 +799,11 @@ h1, h2 {
 
 .liked-movie-poster {
   width: 100%;
-  height: 140px;
-  object-fit: cover;
+  height: 280px;
+  object-fit: fill;
   border-radius: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 15px;
+  background-color: #000; 
 }
 
 .liked-movie-title {
@@ -825,14 +811,13 @@ h1, h2 {
   color: white;
   margin: 0;
   line-height: 1.2;
-  height: auto;
-  overflow: visible;
-  display: block;
-  -webkit-line-clamp: unset;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; 
   -webkit-box-orient: vertical;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: normal; 
+  height: auto;
 }
 
 .liked-movie-score {
@@ -841,7 +826,6 @@ h1, h2 {
   margin-top: 5px;
 }
 
-/* No movies message */
 .no-movies-message {
   text-align: center;
   color: #888;
