@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require("multer");
-const driver = require('./neo4j-driver'); // your neo4j driver instance
+const driver = require('./neo4j-driver'); 
 const bcrypt = require('bcrypt');
 const path = require('path');
 const fs = require('fs');
@@ -8,20 +8,17 @@ const fs = require('fs');
 const app = express();
 const port = 3000;
 
-// Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log('Created uploads directory');
 }
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/') // Make sure this directory exists
+    cb(null, 'uploads/') 
   },
   filename: function (req, file, cb) {
-    // Create unique filename with timestamp and original extension
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
   }
@@ -29,12 +26,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Middleware
 app.use(express.static('public'));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Serve profile pictures
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.json());
 
-// Route: Get all movies
 app.get('/movies', async (req, res) => {
   const session = driver.session();
   try {
@@ -52,29 +47,24 @@ app.get('/movies', async (req, res) => {
 app.post('/signup', async (req, res) => {
   const { name, username, email, password } = req.body;
 
-  // Server-side validation
   if (!name || !username || !email || !password) {
     return res.status(400).json({ error: 'Please fill all required fields.' });
   }
 
-  // Email format validation
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(email)) {
     return res.status(400).json({ error: 'Please enter a valid email address.' });
   }
 
-  // Username validation
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
   if (!usernameRegex.test(username)) {
     return res.status(400).json({ error: 'Username must be 3-20 characters long and contain only letters, numbers, and underscores.' });
   }
 
-  // Password validation
   if (password.length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
   }
 
-  // Name validation
   const nameRegex = /^[a-zA-Z\s]{2,50}$/;
   if (!nameRegex.test(name)) {
     return res.status(400).json({ error: 'Name must contain only letters and spaces (2-50 characters).' });
@@ -83,7 +73,6 @@ app.post('/signup', async (req, res) => {
   const session = driver.session();
 
   try {
-    // Check if user already exists (case-insensitive) - use original email for checking
     const checkUserQuery = `
       MATCH (u:User)
       WHERE toLower(u.username) = toLower($username) OR u.originalEmail = toLower($email)
@@ -105,7 +94,6 @@ app.post('/signup', async (req, res) => {
       }
     }
 
-    // Hash both password and email
     const hashedPassword = await bcrypt.hash(password, 10);
     const hashedEmail = await bcrypt.hash(email.toLowerCase(), 10);
 
@@ -126,8 +114,8 @@ app.post('/signup', async (req, res) => {
       name: name.trim(),
       username: username.toLowerCase(),
       hashedEmail: hashedEmail,
-      originalEmail: email.toLowerCase(), // Store original for duplicate checking only
-      hashedPassword: hashedPassword, // Fixed: was using $password instead of $hashedPassword
+      originalEmail: email.toLowerCase(), 
+      hashedPassword: hashedPassword,
       defaultPfp: 'pp.jpg'
     });
 
@@ -146,13 +134,11 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// Route: Login with case-insensitive username
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const session = driver.session();
 
   try {
-    // Search for user (case-insensitive)
     const result = await session.run(
       'MATCH (u:User) WHERE toLower(u.username) = toLower($username) RETURN u.name AS name, u.password AS password, u.profilePicture AS profilePicture, u.username AS actualUsername',
       { username }
@@ -175,7 +161,7 @@ app.post('/login', async (req, res) => {
       res.json({ 
         message: 'Login successful', 
         name: userName,
-        username: actualUsername, // Return the actual username from database
+        username: actualUsername, 
         profilePicture: profilePicture
       });
     } else {
@@ -190,7 +176,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Route: Upload profile picture
 app.post("/upload-pfp", upload.single("pfp"), async (req, res) => {
   const username = req.body.username;
 
@@ -204,7 +189,6 @@ app.post("/upload-pfp", upload.single("pfp"), async (req, res) => {
   const session = driver.session();
 
   try {
-    // Update the user's profile picture in the database
     const result = await session.run(
       `
       MATCH (u:User {username: $username})
@@ -229,7 +213,6 @@ app.post("/upload-pfp", upload.single("pfp"), async (req, res) => {
   }
 });
 
-// Route: Get user profile picture
 app.get('/user-profile/:username', async (req, res) => {
   const { username } = req.params;
   const session = driver.session();
@@ -255,13 +238,11 @@ app.get('/user-profile/:username', async (req, res) => {
   }
 });
 
-// Route: Delete account
 app.post('/delete-account', async (req, res) => {
   const { username } = req.body;
   const session = driver.session();
 
   try {
-    // Get user's profile picture path before deletion (to potentially clean up file)
     const userResult = await session.run(
       'MATCH (u:User {username: $username}) RETURN u.profilePicture AS profilePicture',
       { username }
@@ -271,7 +252,6 @@ app.post('/delete-account', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Delete the user and all their relationships
     await session.run(
       'MATCH (u:User {username: $username}) DETACH DELETE u',
       { username }
@@ -286,7 +266,6 @@ app.post('/delete-account', async (req, res) => {
   }
 });
 
-// Get genres
 app.get('/genres', async (req, res) => {
   const session = driver.session();
   try {
@@ -308,7 +287,6 @@ app.get('/genres', async (req, res) => {
   }
 });
 
-// FIXED Like a movie - Removes dislike if exists, then creates like
 app.post('/like', async (req, res) => {
   const { username, movieName } = req.body;
   const session = driver.session();
@@ -341,7 +319,6 @@ app.post('/like', async (req, res) => {
     `, { username, movieName });
 
     if (result.records.length === 0) {
-      // Movie was already liked
       return res.json({ success: true, message: "Movie was already liked", alreadyLiked: true });
     }
 
@@ -356,7 +333,6 @@ app.post('/like', async (req, res) => {
   }
 });
 
-// FIXED Dislike a movie - Removes like if exists, then creates dislike
 app.post('/dislike', async (req, res) => {
   const { username, movieName } = req.body;
   const session = driver.session();
@@ -389,7 +365,6 @@ app.post('/dislike', async (req, res) => {
     `, { username, movieName });
 
     if (result.records.length === 0) {
-      // Movie was already disliked
       return res.json({ success: true, message: "Movie was already disliked", alreadyDisliked: true });
     }
 
@@ -404,7 +379,6 @@ app.post('/dislike', async (req, res) => {
   }
 });
 
-// Check movie status for a user (liked/disliked/neutral)
 app.get('/movie-status/:username/:movieName', async (req, res) => {
   const { username, movieName } = req.params;
   const session = driver.session();
@@ -437,7 +411,6 @@ app.get('/movie-status/:username/:movieName', async (req, res) => {
   }
 });
 
-// Get smart recommendations based on user's likes and genre relationships
 app.get('/recommendations/:username', async (req, res) => {
   const { username } = req.params;
   const session = driver.session();
@@ -445,7 +418,6 @@ app.get('/recommendations/:username', async (req, res) => {
   try {
     console.log(`Getting smart recommendations for user: ${username}`);
 
-    // Multi-layered recommendation query
     const result = await session.run(`
       // Get user's liked movies and their genres
       MATCH (u:User {username: $username})-[:LIKES]->(liked:Movie)
@@ -509,7 +481,6 @@ app.get('/recommendations/:username', async (req, res) => {
     console.log(`Found ${recommendations.length} smart recommendations for ${username}`);
 
     if (recommendations.length === 0) {
-      // Fallback: get popular movies not yet rated
       console.log('No personalized recommendations found, using popular movies fallback');
       
       const fallbackResult = await session.run(`
@@ -552,7 +523,6 @@ app.get('/recommendations/:username', async (req, res) => {
   }
 });
 
-// Get filtered movies for homepage (mix of recommendations and popular)
 app.get('/homepage-movies/:username', async (req, res) => {
   const { username } = req.params;
   const session = driver.session();
@@ -560,7 +530,6 @@ app.get('/homepage-movies/:username', async (req, res) => {
   try {
     console.log(`Getting homepage movies for user: ${username}`);
 
-    // Get personalized recommendations
     const recommendationsResult = await session.run(`
       MATCH (u:User {username: $username})-[:LIKES]->(liked:Movie)
       
@@ -588,7 +557,6 @@ app.get('/homepage-movies/:username', async (req, res) => {
       LIMIT 15
     `, { username });
 
-    // Get popular movies not yet rated
     const popularResult = await session.run(`
       MATCH (u:User {username: $username})
       MATCH (m:Movie)
@@ -611,17 +579,14 @@ app.get('/homepage-movies/:username', async (req, res) => {
       _isPopular: true
     }));
 
-    // Merge and sort by recommendation score, then by movie score
     const allMovies = [...recommendations, ...popular]
       .reduce((unique, movie) => {
-        // Remove duplicates based on movie name
         if (!unique.find(m => m.name === movie.name)) {
           unique.push(movie);
         }
         return unique;
       }, [])
       .sort((a, b) => {
-        // Sort by recommendation score first, then by movie score
         const scoreA = a._score || 0;
         const scoreB = b._score || 0;
         if (scoreA !== scoreB) return scoreB - scoreA;
@@ -648,7 +613,6 @@ app.get('/homepage-movies/:username', async (req, res) => {
   }
 });
 
-// Fix existing users without profile pictures
 app.post('/fix-users', async (req, res) => {
   const session = driver.session();
 
@@ -712,7 +676,7 @@ app.post('/add-friend', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Invalid friend request.' });
   }
 
-  const session = driver.session(); // Use the correct driver
+  const session = driver.session();
   try {
     await session.run(
       `
@@ -781,7 +745,6 @@ app.post('/remove-friend', async (req, res) => {
   }
 });
 
-// FIXED: Get user's liked movies endpoint
 app.get('/user-liked-movies/:username', async (req, res) => {
   let { username } = req.params;
   
@@ -790,7 +753,6 @@ app.get('/user-liked-movies/:username', async (req, res) => {
   console.log('Request URL:', req.url);
   console.log('Request method:', req.method);
   
-  // Clean and normalize the username
   username = decodeURIComponent(username).toLowerCase().trim();
   console.log('Cleaned username:', username);
   
@@ -806,7 +768,6 @@ app.get('/user-liked-movies/:username', async (req, res) => {
   const session = driver.session();
 
   try {
-    // First, let's check if the user exists (case-insensitive search)
     console.log('Checking if user exists...');
     const userCheckResult = await session.run(`
       MATCH (u:User)
@@ -820,7 +781,6 @@ app.get('/user-liked-movies/:username', async (req, res) => {
     if (userCheckResult.records.length === 0) {
       console.log('ERROR: User not found in database');
       
-      // Let's also check what users DO exist for debugging
       const allUsersResult = await session.run(`
         MATCH (u:User)
         RETURN u.username as username
@@ -834,14 +794,13 @@ app.get('/user-liked-movies/:username', async (req, res) => {
         success: false, 
         message: 'User not found',
         username: username,
-        existingUsers: existingUsers.slice(0, 5) // Only send first 5 for debugging
+        existingUsers: existingUsers.slice(0, 5) 
       });
     }
 
     const actualUsername = userCheckResult.records[0].get('username');
     console.log('Found user with actual username:', actualUsername);
 
-    // Now get the liked movies using the actual username from database
     console.log('Fetching liked movies...');
     const result = await session.run(`
       MATCH (u:User)-[:LIKES]->(m:Movie)
@@ -880,7 +839,6 @@ app.get('/user-liked-movies/:username', async (req, res) => {
     console.error('Error code:', error.code);
     console.error('Error stack:', error.stack);
     
-    // Send detailed error information for debugging
     res.status(500).json({ 
       success: false, 
       message: 'Database error while fetching liked movies',
@@ -897,7 +855,6 @@ app.get('/user-liked-movies/:username', async (req, res) => {
   }
 });
 
-// Start server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
   console.log(`Uploads directory: ${uploadsDir}`);
