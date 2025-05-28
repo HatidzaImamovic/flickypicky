@@ -2,7 +2,6 @@ let allMovies = [];
 let currentMovieName = '';
 let currentUsername = '';
 
-// Show login or signup forms
 function showSignUp() {
   document.getElementById("loginPage").style.display = "none";
   document.getElementById("signupPage").style.display = "flex";
@@ -13,7 +12,6 @@ function showLogIn() {
   document.getElementById("loginPage").style.display = "flex";
 }
 
-// Enhanced signup functionality with validation
 async function signup() {
   const name = document.getElementById('name').value.trim();
   const username = document.getElementById('signupUsername').value.trim();
@@ -21,27 +19,23 @@ async function signup() {
   const password = document.getElementById('signupPassword').value;
   const confirmPassword = document.getElementById('confirmPassword').value;
 
-  // Input validation
   if (!name || !username || !email || !password || !confirmPassword) {
     alert('Please fill all the fields.');
     return;
   }
 
-  // Email format validation
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(email)) {
     alert('Please enter a valid email address (e.g., user@example.com)');
     return;
   }
 
-  // Username validation (no spaces, special characters)
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
   if (!usernameRegex.test(username)) {
     alert('Username must be 3-20 characters long and contain only letters, numbers, and underscores');
     return;
   }
 
-  // Password strength validation
   if (password.length < 6) {
     alert('Password must be at least 6 characters long');
     return;
@@ -52,7 +46,6 @@ async function signup() {
     return;
   }
 
-  // Name validation (only letters and spaces)
   const nameRegex = /^[a-zA-Z\s]{2,50}$/;
   if (!nameRegex.test(name)) {
     alert('Name must contain only letters and spaces (2-50 characters)');
@@ -71,7 +64,6 @@ async function signup() {
     if (response.ok) {
       alert(data.message);
       showLogIn();
-      // Clear the form
       document.getElementById('name').value = '';
       document.getElementById('signupUsername').value = '';
       document.getElementById('email').value = '';
@@ -86,7 +78,6 @@ async function signup() {
   }
 }
 
-// Enhanced login function to load smart homepage
 async function login() {
   const user = document.getElementById("loginUsername").value;
   const pass = document.getElementById("password").value;
@@ -111,28 +102,26 @@ async function login() {
       const userName = data.name;
       const profilePicture = data.profilePicture || 'pp.jpg';
       
-      // Set user info
       document.getElementById("greetingUsername").textContent = userName;
-      currentUsername = data.username || user; // Use returned username
+      currentUsername = data.username || user; 
 
-      // Load profile picture
       console.log('Loading profile picture:', profilePicture);
       const profilePicElement = document.getElementById("profilePic");
       profilePicElement.src = profilePicture;
 
-      // Show movie page
+      document.getElementById("uploadPic").value = '';
+
       document.getElementById("loginPage").style.display = "none";
       document.getElementById("moviePage").style.display = "block";
       document.getElementById("friendsSection").style.display = "none";
       document.getElementById("moviesSection").style.display = "block";
       document.getElementById("searchBar").style.display = "block";
       document.getElementById("menu").style.display = "block";
+      document.getElementById('searchBar').value = '';
 
-      // Load user stats and smart homepage
       await loadSmartHomepage();
       await loadGenres();
       
-      // Show welcome message
       showNotification(`Welcome back, ${userName}! 🎬`, 'success');
       
     } else {
@@ -145,7 +134,6 @@ async function login() {
   }
 }
 
-// Load smart homepage with personalized recommendations
 async function loadSmartHomepage() {
   try {
     console.log('Loading smart homepage for user:', currentUsername);
@@ -157,7 +145,6 @@ async function loadSmartHomepage() {
       console.log('Smart homepage loaded:', data.stats);
       displayMovies(data.movies);
       
-      // Show a notification about personalized content
       if (data.stats.personalized > 0) {
         showNotification(`🎬 Found ${data.stats.personalized} personalized recommendations for you!`, 'success');
       }
@@ -167,13 +154,13 @@ async function loadSmartHomepage() {
     }
   } catch (error) {
     console.error('Error loading smart homepage:', error);
-    loadMovies(); // Fallback to all movies
+    loadMovies();
   }
 }
 
 function setupProfilePictureUpload() {
   const form = document.getElementById("pfpForm");
-  if (!form) return; // Safety check
+  if (!form) return; 
 
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -186,7 +173,7 @@ function setupProfilePictureUpload() {
 
     const formData = new FormData();
     formData.append("pfp", fileInput.files[0]);
-    formData.append("username", currentUsername); // Include username
+    formData.append("username", currentUsername); 
 
     try {
       const response = await fetch("/upload-pfp", {
@@ -198,14 +185,11 @@ function setupProfilePictureUpload() {
       if (result.success) {
         showNotification("Profile picture updated! 📸", 'success');
         
-        // Update the profile picture immediately
         const profilePicElement = document.getElementById("profilePic");
         profilePicElement.src = result.newPfpPath;
         
-        // Hide the popup after successful upload
         document.getElementById("userPopup").style.display = "none";
         
-        // Clear the file input
         fileInput.value = '';
       } else {
         alert("Failed to update profile picture: " + (result.message || "Unknown error"));
@@ -217,24 +201,20 @@ function setupProfilePictureUpload() {
   });
 }
 
-// Logout
 function logout() {
   currentUsername = '';
   document.getElementById("moviePage").style.display = "none";
   document.getElementById("loginPage").style.display = "flex";
   document.getElementById("userPopup").style.display = "none";
   
-  // Reset profile picture to default
   document.getElementById("profilePic").src = "pp.jpg";
   
-  // Clear login form
   document.getElementById("loginUsername").value = '';
   document.getElementById("password").value = '';
   
   showNotification("Logged out successfully! 👋", 'info');
 }
 
-// Delete account
 async function deleteAccount() {
   const confirmDelete = confirm("Are you sure you want to delete your account? This action cannot be undone.");
   if (!confirmDelete) return;
@@ -260,7 +240,6 @@ async function deleteAccount() {
   }
 }
 
-// Fetch TMDB poster
 async function getTMDBPoster(title) {
   const apiKey = 'c9399d7437ee9e8e41b2c5e521904b14';
   const searchUrl = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(title)}&api_key=${apiKey}`;
@@ -278,12 +257,11 @@ async function getTMDBPoster(title) {
   return null;
 }
 
-// Load movies
 async function loadMovies() {
   try {
     const response = await fetch('/movies');
     const data = await response.json();
-    allMovies = data; // Cache all movies
+    allMovies = data; 
     displayMovies(allMovies);
   } catch (error) {
     console.error('Error loading movies:', error);
@@ -299,20 +277,16 @@ async function displayMovies(movies) {
     return;
   }
 
-  for (const movie of movies) {
+  const movieCards = await Promise.all(movies.map(async (movie) => {
     const div = document.createElement('div');
     div.className = 'movie-card';
-    
-    // Check if this is a recommended movie
+
     const isRecommended = movie._isRecommended;
     const isPopular = movie._isPopular;
-    
-    if (isRecommended) {
-      div.classList.add('recommended-movie');
-    } else if (isPopular) {
-      div.classList.add('popular-movie');
-    }
-    
+
+    if (isRecommended) div.classList.add('recommended-movie');
+    else if (isPopular) div.classList.add('popular-movie');
+
     const posterUrl = await getTMDBPoster(movie.name);
     div.innerHTML = `
       ${isRecommended ? '<div class="recommendation-badge">Recommended for you</div>' : ''}
@@ -321,11 +295,12 @@ async function displayMovies(movies) {
       ${posterUrl ? `<img src="${posterUrl}" alt="${movie.name} poster" class="movie-poster" style="width:150px; cursor:pointer;" onclick='showMovieDetails(${JSON.stringify(movie)})'>` : '<p>No poster available</p>'}
       <div class="movie-score">⭐ ${movie.score}/10</div>
     `;
-    container.appendChild(div);
-  }
+    return div;
+  }));
+
+  movieCards.forEach(card => container.appendChild(card));
 }
 
-// Load genres
 async function loadGenres() {
   try {
     const response = await fetch('/genres');
@@ -350,7 +325,6 @@ async function loadGenres() {
   }
 }
 
-// Filter movies
 async function filterMoviesByGenre(selectedGenre) {
   try {
     const response = await fetch('/movies');
@@ -378,7 +352,6 @@ async function filterMoviesByGenre(selectedGenre) {
   }
 }
 
-// Sort movies
 async function sortMovies(criteria) {
   try {
     const response = await fetch('/movies');
@@ -416,7 +389,6 @@ async function showMovieDetails(movie) {
   const modalDetails = document.getElementById("modalDetails");
   const posterUrl = await getTMDBPoster(movie.name);
   
-  // Check if user has already liked/disliked this movie
   let movieStatus = 'neutral';
   try {
     const statusResponse = await fetch(`/movie-status/${currentUsername}/${encodeURIComponent(movie.name)}`);
@@ -467,7 +439,6 @@ async function showMovieDetails(movie) {
   modal.style.display = "block";
 }
 
-// Enhanced like function with immediate homepage refresh
 async function like() {
   if (!currentMovieName || !currentUsername) {
     alert('Please select a movie and make sure you are logged in.');
@@ -487,25 +458,19 @@ async function like() {
         showNotification('You already liked this movie! 👍', 'info');
       } else {
         showNotification('Movie liked! 👍', 'success');
-        // Refresh the homepage with updated recommendations
         await loadSmartHomepage();
       }
       
-      // Close the modal
       document.getElementById("movieModal").style.display = "none";
       
-      // Update user stats
-      await loadUserStats();
     } else {
       alert(data.message || 'Error liking movie.');
     }
   } catch (error) {
     console.error('Error liking movie:', error);
-    alert('Failed to like movie.');
   }
 }
 
-// Enhanced dislike function with immediate homepage refresh
 async function dislike() {
   if (!currentMovieName || !currentUsername) {
     alert('Please select a movie and make sure you are logged in.');
@@ -525,25 +490,19 @@ async function dislike() {
         showNotification('You already disliked this movie! 👎', 'info');
       } else {
         showNotification('Movie disliked! 👎', 'success');
-        // Refresh the homepage with updated recommendations
         await loadSmartHomepage();
       }
       
-      // Close the modal
       document.getElementById("movieModal").style.display = "none";
       
-      // Update user stats
-      await loadUserStats();
     } else {
       alert(data.message || 'Error disliking movie.');
     }
   } catch (error) {
     console.error('Error disliking movie:', error);
-    alert('Failed to dislike movie.');
   }
 }
 
-// Load recommendations
 async function loadRecommendations() {
   if (!currentUsername) return;
   
@@ -556,23 +515,20 @@ async function loadRecommendations() {
       showNotification(`🎬 Showing ${data.movies.length} personalized recommendations!`, 'success');
     } else {
       console.log('No recommendations found, showing all movies');
-      loadMovies(); // Show all movies if no recommendations
+      loadMovies(); 
       showNotification('No personalized recommendations yet. Like some movies to get started! 🎬', 'info');
     }
   } catch (error) {
     console.error('Error loading recommendations:', error);
-    loadMovies(); // Fallback to showing all movies
+    loadMovies();
   }
 }
 
-// Notification system
 function showNotification(message, type = 'info') {
-  // Create notification element
   const notification = document.createElement('div');
   notification.className = `notification notification-${type}`;
   notification.textContent = message;
   
-  // Style the notification
   notification.style.cssText = `
     position: fixed;
     top: 20px;
@@ -589,7 +545,6 @@ function showNotification(message, type = 'info') {
     animation: slideInRight 0.3s ease-out;
   `;
   
-  // Add animation keyframes if not already added
   if (!document.getElementById('notification-styles')) {
     const style = document.createElement('style');
     style.id = 'notification-styles';
@@ -608,7 +563,6 @@ function showNotification(message, type = 'info') {
   
   document.body.appendChild(notification);
   
-  // Auto remove after 3 seconds
   setTimeout(() => {
     notification.style.animation = 'slideOutRight 0.3s ease-in forwards';
     setTimeout(() => {
@@ -619,16 +573,13 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
-// Updated openUserModal function with liked movies
 async function openUserModal(user) {
   const modal = document.getElementById('userModal');
   
-  // Set user info
   document.getElementById('modalProfilePic').src = user.profilePicture || 'pp.jpg';
   document.getElementById('modalUsername').textContent = `@${user.username}`;
   document.getElementById('modalName').textContent = user.name;
   
-  // Load and display liked movies
   await loadUserLikedMovies(user.username);
   
   modal.style.display = 'block';
@@ -643,7 +594,6 @@ async function loadUserLikedMovies(username) {
     console.log('Username:', username);
     console.log('Current user:', currentUsername);
     
-    // Ensure username is properly encoded for URL
     const encodedUsername = encodeURIComponent(username.toLowerCase().trim());
     const url = `/user-liked-movies/${encodedUsername}`;
     
@@ -670,7 +620,6 @@ async function loadUserLikedMovies(username) {
         const movieDiv = document.createElement('div');
         movieDiv.className = 'liked-movie-item';
         
-        // Get poster from TMDB (reuse existing function)
         const posterUrl = await getTMDBPoster(movie.name);
         
         movieDiv.innerHTML = `
@@ -705,30 +654,7 @@ async function loadUserLikedMovies(username) {
   }
 }
 
-// Updated openUserModal function with better error handling
-async function openUserModal(user) {
-  const modal = document.getElementById('userModal');
-  
-  console.log('=== OPENING USER MODAL ===');
-  console.log('User object:', user);
-  console.log('User username:', user.username);
-  
-  // Set user info
-  document.getElementById('modalProfilePic').src = user.profilePicture || 'pp.jpg';
-  document.getElementById('modalUsername').textContent = `@${user.username}`;
-  document.getElementById('modalName').textContent = user.name;
-  
-  // Load and display liked movies
-  await loadUserLikedMovies(user.username);
-  
-  modal.style.display = 'block';
-  
-  console.log('=== USER MODAL OPENED ===');
-}
-
-// Updated event listeners
 document.addEventListener('DOMContentLoaded', function() {
-  // Close modal event listener
   const closeModalBtn = document.getElementById('closeModal');
   if (closeModalBtn) {
     closeModalBtn.addEventListener('click', () => {
@@ -736,7 +662,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Click outside modal to close
   window.addEventListener('click', (event) => {
     const modal = document.getElementById('userModal');
     if (event.target === modal) {
@@ -745,12 +670,13 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// Updated showFriends function (same as before but included for completeness)
 async function showFriends() {
   document.getElementById('moviesSection').style.display = 'none';
   document.getElementById('friendsSection').style.display = 'block';
   document.getElementById('searchBar').style.display = 'none';
   document.getElementById('menu').style.display = 'none';
+  document.getElementById('userSearchInput').value = '';
+
 
   const friendsList = document.getElementById('friendsList');
   friendsList.innerHTML = '';
@@ -775,7 +701,6 @@ async function showFriends() {
 
         friendsList.appendChild(card);
 
-        // Add click event to the profile picture after adding to DOM
         const profilePicElement = card.querySelector('.clickable-pfp');
         profilePicElement.addEventListener('click', () => {
           openUserModal(friend);
@@ -789,9 +714,6 @@ async function showFriends() {
     friendsList.innerHTML = '<p>Error loading friends.</p>';
   }
 }
-
-
-
 
 async function unfriend(targetUsername) {
   const confirmUnfriend = confirm(`Are you sure you want to unfriend @${targetUsername}?`);
@@ -807,7 +729,7 @@ async function unfriend(targetUsername) {
     const data = await response.json();
     if (data.success) {
       showNotification(`You unfriended @${targetUsername}`, 'info');
-      showFriends(); // Refresh the friends list
+      showFriends();
     } else {
       alert(data.message || 'Failed to unfriend.');
     }
@@ -817,30 +739,18 @@ async function unfriend(targetUsername) {
   }
 }
 
-
 function resetToHome() {
-  // Show movies section
   document.getElementById('moviesSection').style.display = 'block';
-
-  // Hide friends section
   document.getElementById('friendsSection').style.display = 'none';
-
   document.getElementById('searchBar').style.display = 'block';
-
   document.getElementById('menu').style.display = 'block';
-
-
   loadSmartHomepage();
 }
 
 function showAllMovies(){
   document.getElementById('moviesSection').style.display = 'block';
-
-    // Hide friends section
   document.getElementById('friendsSection').style.display = 'none';
-
   document.getElementById('searchBar').style.display = 'block';
-
   loadMovies();
 }
 
@@ -869,7 +779,6 @@ async function sendFriendRequest(targetUsername) {
     alert('An error occurred while sending friend request.');
   }
 }
-
 
 document.getElementById('userSearchInput').addEventListener('input', async function () {
   const query = this.value.trim().toLowerCase();
@@ -912,7 +821,6 @@ document.addEventListener("DOMContentLoaded", () => {
     userPopup.style.display = userPopup.style.display === "block" ? "none" : "block";
   });
 
-  // Set default profile picture initially
   document.getElementById("profilePic").src = "pp.jpg";
 
   window.addEventListener("click", function(e) {
@@ -938,12 +846,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 
-// Close modal when the user clicks on <span> (x)
 document.querySelector(".close").onclick = function () {
   document.getElementById("movieModal").style.display = "none";
 };
 
-// Also close modal if user clicks outside the modal content
 window.onclick = function (event) {
   const modal = document.getElementById("movieModal");
   if (event.target === modal) {
@@ -951,7 +857,6 @@ window.onclick = function (event) {
   }
 };
 
-// Enhanced search functionality
 document.getElementById('searchBar').addEventListener('input', async function () {
   const query = this.value.trim().toLowerCase();
   
@@ -959,7 +864,6 @@ document.getElementById('searchBar').addEventListener('input', async function ()
     await loadMovies();
     loadSmartHomepage();
   } else {
-    // Filter movies based on search query
     const filtered = allMovies.filter(movie => 
       movie.name.toLowerCase().includes(query) ||
       movie.genre.toLowerCase().includes(query) ||
@@ -972,4 +876,9 @@ document.getElementById('searchBar').addEventListener('input', async function ()
       document.getElementById('movies').innerHTML = `<p>No movies found for "${query}"</p>`;
     }
   }
+});
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadMovies();
+  loadSmartHomepage(); 
 });
